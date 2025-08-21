@@ -1,0 +1,118 @@
+#!/usr/bin/bash
+
+shopt -s dotglob
+
+export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/
+export CFLAGS="-I$HOME/.local/include"
+
+state="init"
+
+main() {
+    local dir="$HOME/.local"
+    local pkg="$(basename "$PWD")"
+    local prefix=""
+    local pkgdir="$dir/pkg/$pkg"
+    local destdir="$pkgdir"
+    local builddir="$PWD"
+    local makeflags=("-j$(nproc)")
+
+    while [[ "$state" != "exit" ]]; do
+        echo "STATE $state"
+
+        case "$state" in
+            init)
+                if [ -f "$builddir/Makefile" ]; then
+                    state="make"
+                elif [ -f configure ]; then
+                    state="configure"
+                elif [ -x autogen.sh ]; then
+                    state="autogen"
+                elif [ -f CMakeLists.txt ]; then
+                    state="cmake"
+                fi
+                ;;
+            autogen)
+                ./autogen.sh
+                state="configure"
+                ;;
+            configure)
+                prefix="$dir"
+                ./configure --prefix="$prefix" || return 1
+                state="exit"
+                ;;
+            cmake)
+                mkdir -pv build
+                builddir="$PWD/build"
+                prefix="$dir"
+                cmake -S "$PWD" -B "$builddir" -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=RelWithDebInfo || return 1
+                state="make"
+                ;;
+            make)
+                if grep -q "CMAKE_INSTALL_PREFIX" "$builddir/Makefile"; then
+                    prefix="$dir"
+                    makeflags+=("CMAKE_INSTALL_PREFIX=$prefix")
+                fi
+
+                make -C "$builddir" "${makeflags[@]}"  || return 2
+                state="install"
+                ;;
+            install)
+                if [ -n "$prefix" ]; then
+                    destdir="$(mktemp -d)"
+                    trap "rm -rf $destdir" RETURN
+                fi
+                make -C "$builddir" install DESTDIR="$destdir" || return 3
+                if [ -n "$prefix" ]; then
+                    mkdir -vp "$pkgdir"
+                    find "$destdir$prefix" -type f -printf "%P\n" | xargs -I{} install -CDv "$destdir$prefix/{}" "$pkgdir/{}"
+                fi
+                state="stow"
+                ;;
+            stow)
+                stow -vv -d "$dir/pkg" "$pkg"
+                state="exit"
+                ;;
+        esac
+    done
+}
+
+printer() {
+    local chr="\\"
+    while read line; do 
+        case "$chr" in
+            "\\") chr="|" ;;
+            "|") chr="/" ;;
+            "/") chr="-" ;;
+            "-") chr="\\" ;;
+        esac
+
+        if [[ $(awk '{print $1}' <<< "$line") == "STATE" ]]; then
+            state="$(awk '{print $2}' <<< "$line")"
+        else
+            pretext="\33[2K\r[$chr] [$state] "
+            printf "$pretext%s" "$(cut -c -"$(( $(tput cols) - $(wc -c <<< "$pretext") ))" <<< "$line")"
+        fi
+        echo "$line" >> instowl.log
+    done
+}
+
+fifo="/tmp/fifo-$RANDOM"
+mkfifo "$fifo" && trap "rm $fifo" EXIT
+
+echo "" > instowl.log
+
+printer < "$fifo" &
+pid="$!"
+main &> "$fifo"
+ret="$?"
+
+wait "$pid"
+
+if [[ $ret == 0 ]]; then
+    printf "\33[2K\r[x] Done\n"
+else
+    printf "\33[2K\r"
+    tail instowl.log
+    echo "[!] Error"
+    exit 4
+fi
