@@ -4,8 +4,10 @@ shopt -s dotglob
 
 export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/
 export CFLAGS="-I$HOME/.local/include"
+export PERL5LIB="$HOME/.local/lib/perl5/"
 
 state="init"
+install_state="make_install"
 
 main() {
     local dir="$HOME/.local"
@@ -29,6 +31,10 @@ main() {
                     state="autogen"
                 elif [ -f CMakeLists.txt ]; then
                     state="cmake"
+                elif [ -f build.rs ]; then
+                    state="cargo"
+                elif [ -f Build.PL ]; then
+                    state="perl"
                 fi
                 ;;
             autogen)
@@ -54,19 +60,43 @@ main() {
                 fi
 
                 make -C "$builddir" "${makeflags[@]}"  || return 2
-                state="install"
+                state="pre_install"
                 ;;
-            install)
+            pre_install)
+                mkdir -vp "$pkgdir"
                 if [ -n "$prefix" ]; then
                     destdir="$(mktemp -d)"
                     trap "rm -rf $destdir" RETURN
                 fi
+                state="${install_state}"
+                ;;
+            make_install)
                 make -C "$builddir" install DESTDIR="$destdir" || return 3
+                state="fixpaths"
+                ;;
+            perl)
+                perl ./Build.PL || return 2
+                prefix="$dir"
+                install_state="perl_install"
+                state="pre_install"
+                ;;
+            perl_install)
+                ./Build install --install_base "$prefix" --destdir "$destdir" || return 3
+                state="post_install"
+                ;;
+            post_install)
                 if [ -n "$prefix" ]; then
-                    mkdir -vp "$pkgdir"
                     find "$destdir$prefix" -type f -printf "%P\n" | xargs -I{} install -CDv "$destdir$prefix/{}" "$pkgdir/{}"
                 fi
                 state="stow"
+                ;;
+            cargo)
+                install_state="cargo_install"
+                state="pre_install"
+                ;;
+            cargo_install)
+                cargo install --no-track --root "$pkgdir" --path . || return 3
+                state="post_install"
                 ;;
             stow)
                 stow -vv -d "$dir/pkg" "$pkg"
