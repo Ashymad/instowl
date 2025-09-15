@@ -11,7 +11,7 @@ install_state="make_install"
 
 main() {
     local dir="$HOME/.local"
-    local pkg="$(basename "$PWD")"
+    local pkg="${pkg:-$(basename "$PWD")}"
     local prefix=""
     local pkgdir="$dir/pkg/$pkg"
     local destdir="$pkgdir"
@@ -23,15 +23,15 @@ main() {
 
         case "$state" in
             init)
-                if [ -f "$builddir/Makefile" ]; then
-                    state="make"
-                elif [ -f configure ]; then
+                if [ -f configure ]; then
                     state="configure"
+                elif [ -f "$builddir/Makefile" ]; then
+                    state="make"
                 elif [ -x autogen.sh ]; then
                     state="autogen"
                 elif [ -f CMakeLists.txt ]; then
                     state="cmake"
-                elif [ -f build.rs ]; then
+                elif [ -f Cargo.toml ]; then
                     state="cargo"
                 elif [ -f Build.PL ]; then
                     state="perl"
@@ -44,7 +44,7 @@ main() {
             configure)
                 prefix="$dir"
                 ./configure --prefix="$prefix" || return 1
-                state="exit"
+                state="make"
                 ;;
             cmake)
                 mkdir -pv build
@@ -71,8 +71,8 @@ main() {
                 state="${install_state}"
                 ;;
             make_install)
-                make -C "$builddir" install DESTDIR="$destdir" || return 3
-                state="fixpaths"
+                PREFIX="$prefix" make -C "$builddir" install DESTDIR="$destdir" || return 3
+                state="post_install"
                 ;;
             perl)
                 perl ./Build.PL || return 2
@@ -86,7 +86,7 @@ main() {
                 ;;
             post_install)
                 if [ -n "$prefix" ]; then
-                    find "$destdir$prefix" -type f -printf "%P\n" | xargs -I{} install -CDv "$destdir$prefix/{}" "$pkgdir/{}"
+                    find "$destdir$prefix" \( -type f -o -type l \) -printf "%P\n" | xargs -I{} install -Dpv "$destdir$prefix/{}" "$pkgdir/{}"
                 fi
                 state="stow"
                 ;;
@@ -95,7 +95,7 @@ main() {
                 state="pre_install"
                 ;;
             cargo_install)
-                cargo install --no-track --root "$pkgdir" --path . || return 3
+                cargo install --force --no-track --root "$pkgdir" --path . || return 3
                 state="post_install"
                 ;;
             stow)
@@ -120,7 +120,7 @@ printer() {
             state="$(awk '{print $2}' <<< "$line")"
         else
             pretext="\33[2K\r[$chr] [$state] "
-            printf "$pretext%s" "$(cut -c -"$(( $(tput cols) - $(wc -c <<< "$pretext") ))" <<< "$line")"
+            printf "$pretext%s" "$(cut -c -"$(( $(tput cols) - $(wc -c <<< "$pretext") - 1 ))" <<< "$line")"
         fi
         echo "$line" >> instowl.log
     done
