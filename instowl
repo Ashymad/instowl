@@ -3,7 +3,7 @@
 shopt -s dotglob
 
 export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig/
-export CFLAGS="-I$HOME/.local/include"
+export CFLAGS="-idirafter $HOME/.local/include"
 export PERL5LIB="$HOME/.local/lib/perl5/"
 
 state="init"
