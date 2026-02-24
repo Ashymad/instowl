@@ -11,6 +11,8 @@ install_state="make_install"
 
 main() {
     local dir="$HOME/.local"
+    local target="$dir"
+    local stowdir="$dir/pkg"
     local pkg="${pkg:-$(basename "$PWD")}"
     local prefix=""
     local pkgdir="$dir/pkg/$pkg"
@@ -35,6 +37,10 @@ main() {
                     state="cargo"
                 elif [ -f Build.PL ]; then
                     state="perl"
+                elif [ -f go.mod ]; then
+                    state="go"
+                elif [ -f requirements.txt ]; then
+                    state="python"
                 fi
                 ;;
             autogen)
@@ -80,13 +86,29 @@ main() {
                 install_state="perl_install"
                 state="pre_install"
                 ;;
+            go)
+                go build || return 2
+                install_state="go_install"
+                state="pre_install"
+                ;;
             perl_install)
                 ./Build install --install_base "$prefix" --destdir "$destdir" || return 3
                 state="post_install"
                 ;;
+            python)
+                prefix="$dir"
+                python3 -m build --wheel --no-isolation
+                install_state="python_install"
+                state="pre_install"
+                ;;
             post_install)
                 if [ -n "$prefix" ]; then
-                    find "$destdir$prefix" \( -type f -o -type l \) -printf "%P\n" | xargs -I{} install -Dpv "$destdir$prefix/{}" "$pkgdir/{}"
+                    [ -d "$destdir$prefix" ] || {
+                        echo "Didn't find the right prefix"
+                        find "$destdir"
+                        exit 1
+                    }
+                    find "$destdir$prefix$postfix" \( -type f -o -type l \) -printf "%P\n" | xargs -I{} install -Dpv "$destdir$prefix$postfix/{}" "$pkgdir/{}"
                 fi
                 state="stow"
                 ;;
@@ -95,11 +117,20 @@ main() {
                 state="pre_install"
                 ;;
             cargo_install)
-                cargo install --force --no-track --root "$pkgdir" --path . || return 3
+                cargo install --force --locked --no-track --root "$pkgdir" --path . || return 3
+                state="post_install"
+                ;;
+            python_install)
+                python3 -m installer --destdir="$destdir" --prefix="$prefix" dist/*.whl
+                postfix="/local"
+                state="post_install"
+                ;;
+            go_install)
+                GOPATH="$pkgdir" go install
                 state="post_install"
                 ;;
             stow)
-                stow -vv -d "$dir/pkg" "$pkg"
+                stow -vv -d "$stowdir" -t "$target" "$pkg"
                 state="exit"
                 ;;
         esac
@@ -120,7 +151,7 @@ printer() {
             state="$(awk '{print $2}' <<< "$line")"
         else
             pretext="\33[2K\r[$chr] [$state] "
-            printf "$pretext%s" "$(cut -c -"$(( $(tput cols) - $(wc -c <<< "$pretext") - 1 ))" <<< "$line")"
+            printf "$pretext%s" "$(cut -c -"$(( $(tput cols) - $(wc -c <<< "$pretext") - 3 ))" <<< "$line")"
         fi
         echo "$line" >> instowl.log
     done
