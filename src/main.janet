@@ -29,8 +29,13 @@
             (buffer/clear buf)
             (buffer/push-string buf line)))))))
 
+(defmacro errexit [msg]
+  ~(do
+     (set errormsg ,msg)
+     (set state :error)))
+
 (defn runp [state & args]
-  (def proc (os/spawn args : {:out :pipe :err :pipe}))
+  (def proc (os/spawn args :p {:out :pipe :err :pipe}))
   (def logfile (file/open "./instowl.log" :a))
   (ev/gather
     (prinfer state logfile (proc :out))
@@ -46,10 +51,12 @@
   (file/close logfile)
   code)
 
-(defmacro checkrun [newstate & args]
-  ~(if (= (runp state ,;args) 0)
-     (set state ,newstate)
-     (set state :error)))
+(defmacro checkrun [newstate cmd & args]
+  (with-syms [$ret]
+    ~(let [,$ret (runp state ,cmd ,;args)]
+       (if (= ,$ret 0)
+         (set state ,newstate)
+         (errexit (string/format "Command '%s' failed with code: %d" ,cmd ,$ret))))))
 
 (defmacro iff [&opt condition iftrue & rest]
   (if (nil? iftrue) condition ~(if ,condition ,iftrue (iff ,;rest))))
@@ -61,10 +68,12 @@
     (def pkg (libc/basename (os/getenv "PWD")))
     (def pkgdir (string/join [stowdir "/" pkg]))
     (def destdir (libc/mkdtemp "/tmp/instowl.XXXXXX"))
-    (sh/rm "./instowl.log")
 
-    (var prefix target)
     (var state :init)
+    (var errormsg "Unknown")
+    (var prefix target)
+
+    (sh/rm "./instowl.log")
 
     (while (not= state :exit)
       (case state
@@ -73,16 +82,16 @@
           (file/file-exists? "configure") (set state :conf/configure)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
           (file/file-exists? "Makefile") (set state :build/make)
-          (set state :error))
+          (errexit "Unable to auto-detect the build system"))
 
         :conf/autotools
-        (checkrun :conf/configure "/usr/bin/autoreconf" "-vi") 
+        (checkrun :conf/configure "autoreconf" "-vi") 
 
         :conf/configure
         (checkrun :build/make "./configure" (string/join ["--prefix=" prefix]))
 
         :build/make
-        (checkrun :install/pre "/usr/bin/make" (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/pre "make" (string/format "-j%d" (libc/get_nprocs)))
 
         :install/pre
         (do
@@ -90,7 +99,7 @@
 
         :install/make
         (checkrun :install/post
-                  "/usr/bin/make"
+                  "make"
                   "install"
                   (string/join ["DESTDIR=" destdir])
                   (string/join ["PREFIX=" prefix]))
@@ -107,19 +116,19 @@
                 (file/move-file file dst))
               (file/close logfile)
               (set state :stow))
-            (set state :error)))
+            (errexit "The destination directory doesn't contain the prefix")))
 
         :stow
-        (checkrun :done "/usr/bin/stow" "-vv" "-d" stowdir "-t" target pkg)
+        (checkrun :done "stow" "-vv" "-d" stowdir "-t" target pkg)
 
         :error
         (do
           (sh/rm (string/join [destdir]))
-          (printf "\x1b[2K⸉!⸊→Error")
+          (printf "\x1b[2K{%s}⸉!⸊→%s" state errormsg)
           (set state :exit))
 
         :done
         (do
           (sh/rm (string/join [destdir]))
-          (printf "\x1b[2K⸉x⸊→Done")
+          (printf "\x1b[2K{%s}⸉x⸊→Success" state)
           (set state :exit))))))
