@@ -1,6 +1,7 @@
 (import spork/sh)
 (import ./libc)
 (import ./file)
+(import ./tools)
 
 (def spinner "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 (var ch (string/slice spinner 0 3))
@@ -34,9 +35,16 @@
      (set errormsg ,msg)
      (set state :error)))
 
+(def env {})
+
 (defn runp [state & args]
-  (def proc (os/spawn args :p {:out :pipe :err :pipe}))
   (def logfile (file/open "./instowl.log" :a))
+  (file/write logfile (string/join ["RUN" ;args "\n"] " "))
+  (def proc (os/spawn args :e
+                      {:out :pipe
+                       :err :pipe
+                       "PATH" (string/join [(os/getenv "PATH") "/home/shyman/.local/bin/"] ":")
+                       "PKG_CONFIG_PATH" "/home/shyman/.local/lib/pkgconfig/"}))
   (ev/gather
     (prinfer state logfile (proc :out))
     (prinfer state logfile (proc :err))
@@ -52,11 +60,14 @@
   code)
 
 (defmacro checkrun [newstate cmd & args]
-  (with-syms [$ret]
-    ~(let [,$ret (runp state ,cmd ,;args)]
-       (if (= ,$ret 0)
-         (set state ,newstate)
-         (errexit (string/format "Command '%s' failed with code: %d" ,cmd ,$ret))))))
+  (with-syms [$ret $cmd]
+    ~(let [,$cmd (tools/gettool ,cmd)]
+       (if (nil? ,$cmd)
+         (errexit (string/format "Unable to find the tool '%s'" ,cmd))
+         (let [,$ret (runp state ,$cmd ,;args)]
+           (if (= ,$ret 0)
+             (set state ,newstate)
+             (errexit (string/format "Command '%s' failed with code: %d" ,$cmd ,$ret))))))))
 
 (defmacro iff [&opt condition iftrue & rest]
   (if (nil? iftrue) condition ~(if ,condition ,iftrue (iff ,;rest))))
@@ -85,13 +96,13 @@
           (errexit "Unable to auto-detect the build system"))
 
         :conf/autotools
-        (checkrun :conf/configure "autoreconf" "-vi") 
+        (checkrun :conf/configure :autoreconf "-vi") 
 
         :conf/configure
-        (checkrun :build/make "./configure" (string/join ["--prefix=" prefix]))
+        (checkrun :build/make :configure (string/join ["--prefix=" prefix]))
 
         :build/make
-        (checkrun :install/pre "make" (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/pre :make (string/format "-j%d" (libc/get_nprocs)))
 
         :install/pre
         (do
@@ -99,7 +110,7 @@
 
         :install/make
         (checkrun :install/post
-                  "make"
+                  :make
                   "install"
                   (string/join ["DESTDIR=" destdir])
                   (string/join ["PREFIX=" prefix]))
@@ -119,7 +130,7 @@
             (errexit "The destination directory doesn't contain the prefix")))
 
         :stow
-        (checkrun :done "stow" "-vv" "-d" stowdir "-t" target pkg)
+        (checkrun :done :stow "-v" "-d" stowdir "-t" target pkg)
 
         :error
         (do

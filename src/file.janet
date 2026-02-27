@@ -15,11 +15,13 @@
 
 (defn which [exec]
   (var ret nil)
-  (each dir (string/split ":" (os/getenv "PATH"))
-    (let [path (string/join [dir "/" exec])]
-      (if (file-exists? path)
-        (do
-          (set ret path)
-          (break path)))))
-  ret)
+  (if (or (string/has-prefix? "/" exec) (string/has-prefix? "./" exec))
+    (if (file-exists? exec) (set ret exec))
+    (each dir (string/split ":" (os/getenv "PATH"))
+      (let [path (string/join [dir "/" exec])]
+        (if (file-exists? path)
+          (do
+            (set ret path)
+            (break))))))
+    ret)
 
