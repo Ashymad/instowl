@@ -35,16 +35,10 @@
      (set errormsg ,msg)
      (set state :error)))
 
-(def env {})
-
-(defn runp [state & args]
+(defn runp [state env & args]
   (def logfile (file/open "./instowl.log" :a))
   (file/write logfile (string/join ["RUN" ;args "\n"] " "))
-  (def proc (os/spawn args :e
-                      {:out :pipe
-                       :err :pipe
-                       "PATH" (string/join [(os/getenv "PATH") "/home/shyman/.local/bin/"] ":")
-                       "PKG_CONFIG_PATH" "/home/shyman/.local/lib/pkgconfig/"}))
+  (def proc (os/spawn args :e (table :err :pipe :out :pipe ;env)))
   (ev/gather
     (prinfer state logfile (proc :out))
     (prinfer state logfile (proc :err))
@@ -64,21 +58,29 @@
     ~(let [,$cmd (tools/gettool ,cmd)]
        (if (nil? ,$cmd)
          (errexit (string/format "Unable to find the tool '%s'" ,cmd))
-         (let [,$ret (runp state ,$cmd ,;args)]
+         (let [,$ret (runp state env ,$cmd ,;args)]
            (if (= ,$ret 0)
              (set state ,newstate)
              (errexit (string/format "Command '%s' failed with code: %d" ,$cmd ,$ret))))))))
 
-(defmacro iff [&opt condition iftrue & rest]
-  (if (nil? iftrue) condition ~(if ,condition ,iftrue (iff ,;rest))))
+(defn path/join [& args]
+  (string/join [;args] "/"))
 
 (defn main [& args]
   (do
-    (def target (string/join [(os/getenv "HOME") "/.local"]))
-    (def stowdir (string/join [target "/pkg"]))
+    (def home (os/getenv "HOME"))
+    (def target (path/join home ".local"))
+    (def stowdir (path/join target "pkg"))
     (def pkg (libc/basename (os/getenv "PWD")))
-    (def pkgdir (string/join [stowdir "/" pkg]))
+    (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instowl.XXXXXX"))
+
+    (def env ["PATH" (string/join [(os/getenv "PATH") (path/join target "bin")] ":")
+              "PKG_CONFIG_PATH" (path/join target "lib" "pkgconfig")
+              "CFLAGS" (string/join ["-idirafter" (path/join target "include")] " ")
+              "PERL5LIB" (path/join target "lib" "perl5")
+              "GOPATH" destdir
+              "HOME" home])
 
     (var state :init)
     (var errormsg "Unknown")
@@ -89,7 +91,9 @@
     (while (not= state :exit)
       (case state
         :init
-        (iff
+        (cond
+          (file/file-exists? "go.mod") (set state :build/go)
+          (file/file-exists? "Cargo.toml") (set state :build/cargo)
           (file/file-exists? "configure") (set state :conf/configure)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
           (file/file-exists? "Makefile") (set state :build/make)
@@ -102,11 +106,13 @@
         (checkrun :build/make :configure (string/join ["--prefix=" prefix]))
 
         :build/make
-        (checkrun :install/pre :make (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/make :make (string/format "-j%d" (libc/get_nprocs)))
 
-        :install/pre
-        (do
-          (set state :install/make))
+        :build/go
+        (checkrun :install/go :go "build" "-v")
+
+        :build/cargo
+        (checkrun :install/cargo :cargo "build" "--locked" "--release")
 
         :install/make
         (checkrun :install/post
@@ -114,6 +120,17 @@
                   "install"
                   (string/join ["DESTDIR=" destdir])
                   (string/join ["PREFIX=" prefix]))
+
+        :install/go
+        (do
+          (set prefix "")
+          (checkrun :install/go :go "install" "-v")
+          (checkrun :install/post :go "clean" "-modcache"))
+
+        :install/cargo
+        (do
+          (set prefix "")
+          (checkrun :install/post :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" "."))
 
         :install/post
         (do

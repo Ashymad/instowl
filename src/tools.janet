@@ -5,6 +5,8 @@
     :make ["make" "gmake"]
     :configure ["./configure"]
     :autoreconf ["autoreconf"]
+    :go ["go"]
+    :cargo ["cargo"]
     :stow ["stow" "xstow"]))
 
 (defn gettool [tool]
