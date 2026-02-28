@@ -3,6 +3,8 @@
 (import ./file)
 (import ./tools)
 
+(def columns ((libc/ioctl 1 :TIOCGWINSZ) 1))
+
 (def spinner "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 (var ch (string/slice spinner 0 3))
 
@@ -14,7 +16,8 @@
 
 (defn msg [state line logfile]
   (file/write logfile line "\n")
-  (prinf "\x1b[2K{%s}⸉%s⸊→%s\r" state ch (string/slice line 0 (min 80 (length line))))
+  (def pre (string/format "\x1b[2K{%s}⸉%s⸊→" state ch))
+  (prinf "%s%s\r" pre (string/slice line 0 (min (- columns (length pre)) (length line))))
   (flush))
 
 (defn prinfer [state logfile pipe]
@@ -94,6 +97,7 @@
         (cond
           (file/file-exists? "go.mod") (set state :build/go)
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
+          (not (nil? (libc/glob "*.pro"))) (set state :conf/qmake)
           (file/file-exists? "configure") (set state :conf/configure)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
           (file/file-exists? "Makefile") (set state :build/make)
@@ -105,8 +109,13 @@
         :conf/configure
         (checkrun :build/make :configure (string/join ["--prefix=" prefix]))
 
+        :conf/qmake
+        (do
+          (set prefix "/usr/local")
+          (checkrun :build/make :qmake))
+
         :build/make
-        (checkrun :install/make :make (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/make :make "CC=gcc" (string/format "-j%d" (libc/get_nprocs)))
 
         :build/go
         (checkrun :install/go :go "build" "-v")
@@ -119,7 +128,8 @@
                   :make
                   "install"
                   (string/join ["DESTDIR=" destdir])
-                  (string/join ["PREFIX=" prefix]))
+                  (string/join ["PREFIX=" prefix])
+                  (string/join ["INSTALL_ROOT=" destdir]))
 
         :install/go
         (do
