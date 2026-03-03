@@ -83,7 +83,10 @@
               "CFLAGS" (string/join ["-idirafter" (path/join target "include")] " ")
               "PERL5LIB" (path/join target "lib" "perl5")
               "GOPATH" destdir
-              "HOME" home])
+              "HOME" home
+              "CC" (os/getenv "CC")
+              "CXX" (os/getenv "CXX")
+              "CFLAGS" (os/getenv "CFLAGS")])
 
     (var state :init)
     (var errormsg "Unknown")
@@ -115,7 +118,7 @@
           (checkrun :build/make :qmake))
 
         :build/make
-        (checkrun :install/make :make "CC=gcc" (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/make :make (string/format "-j%d" (libc/get_nprocs)))
 
         :build/go
         (checkrun :install/go :go "build" "-v")
