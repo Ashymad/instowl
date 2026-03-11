@@ -7,16 +7,18 @@
     :configure ["./configure"]
     :autoreconf ["autoreconf"]
     :go ["go"]
+    :python ["python" "python3"]
     :cargo ["cargo"]
     :stow ["stow" "xstow"]))
 
 (defn gettool [tool]
   (var ret nil)
-  (each path (toolpath tool)
-    (let [fullpath (file/which path)]
-      (if (not (nil? fullpath)) 
-        (do
-          (set ret fullpath)
-          (break)))))
+  (each path (array/concat @[(os/getenv (string/ascii-upper tool))] (toolpath tool))
+    (if (not (nil? path))
+      (let [fullpath (file/which path)]
+        (if (not (nil? fullpath)) 
+          (do
+            (set ret fullpath)
+            (break))))))
   ret)
 

@@ -69,6 +69,9 @@
 (defn path/join [& args]
   (string/join [;args] "/"))
 
+(defn stropt [a b]
+  (string/join [a b] "="))
+
 (defn main [& args]
   (do
     (def home (os/getenv "HOME"))
@@ -100,6 +103,7 @@
         (cond
           (file/file-exists? "go.mod") (set state :build/go)
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
+          (file/file-exists? "requirements.txt") (set state :build/python)
           (not (nil? (libc/glob "*.pro"))) (set state :conf/qmake)
           (file/file-exists? "configure") (set state :conf/configure)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
@@ -110,7 +114,7 @@
         (checkrun :conf/configure :autoreconf "-vi") 
 
         :conf/configure
-        (checkrun :build/make :configure (string/join ["--prefix=" prefix]))
+        (checkrun :build/make :configure (stropt "--prefix" prefix))
 
         :conf/qmake
         (do
@@ -126,13 +130,17 @@
         :build/cargo
         (checkrun :install/cargo :cargo "build" "--locked" "--release")
 
+        :build/python
+        (checkrun :install/python :python "-m" "build" "--wheel" "--no-isolation")
+
         :install/make
         (checkrun :install/post
                   :make
                   "install"
-                  (string/join ["DESTDIR=" destdir])
-                  (string/join ["PREFIX=" prefix])
-                  (string/join ["INSTALL_ROOT=" destdir]))
+                  (stropt "PREFIX" prefix)
+                  (stropt "CMAKE_INSTALL_PREFIX" prefix)
+                  (stropt "DESTDIR" destdir)
+                  (stropt "INSTALL_ROOT" destdir))
 
         :install/go
         (do
@@ -144,6 +152,15 @@
         (do
           (set prefix "")
           (checkrun :install/post :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" "."))
+
+        :install/python
+        (do
+          (def wheels (libc/glob "dist/*.whl"))
+          (if (nil? wheels)
+            (errexit "No wheels present")
+            (checkrun :install/post :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels))
+          (set prefix (path/join target "local")))
+
 
         :install/post
         (do
