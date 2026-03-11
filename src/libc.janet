@@ -29,15 +29,21 @@
       (c/globfree globbed)
       paths)))
 
+(defmacro letsome [name val & rest]
+  ~(let [,name ,val]
+     (if (nil? ,name) nil
+       ,;rest)))
+
 (def c/ioctl :private (bind "ioctl" :int :int :ulong :ptr))
 (def c/winsize :private (ffi/struct :short :short :short :short))
+(def c/ioctl/args :private
+  @{:TIOCGWINSZ [21523 c/winsize [0 0 0 0]]})
 
 (defn ioctl [fd op]
-  (case op
-    :TIOCGWINSZ
-    (let [winsize (ffi/write c/winsize [0 0 0 0])]
-      (c/ioctl fd 21523 winsize)
-      (ffi/read c/winsize winsize))))
+  (letsome args (c/ioctl/args op)
+    (let [arg (ffi/write (args 1) (args 2))]
+      (c/ioctl fd (args 0) arg)
+      (ffi/read (args 1) arg))))
 
 (defbind get_nprocs :int)
 (defbind/str dirname)
