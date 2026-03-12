@@ -3,6 +3,8 @@
 (defn toolpath [tool]
   (case tool
     :make ["make" "gmake"]
+    :ninja ["ninja"]
+    :cmake ["cmake"]
     :qmake ["qmake" "qmake6"]
     :configure ["./configure"]
     :autoreconf ["autoreconf"]

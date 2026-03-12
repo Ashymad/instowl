@@ -102,15 +102,16 @@
       (case state
         :init
         (cond
+          (file/file-exists? "configure") (set state :conf/configure)
+          (file/file-exists? "Makefile") (set state :build/make)
           (file/file-exists? "go.mod") (set state :build/go)
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
           (file/file-exists? "pyproject.toml") (set state :build/pep517)
           (file/file-exists? "setup.py") (set state :build/setuptools)
           (utils/some? (libc/glob "*.pro")) (set state :conf/qmake)
-          (file/file-exists? "configure") (set state :conf/configure)
+          (file/file-exists? "CMakeLists.txt") (set state :conf/cmake)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
           (file/file-exists? "meson.build") (set state :conf/meson)
-          (file/file-exists? "Makefile") (set state :build/make)
           (errexit "Unable to auto-detect the build system"))
 
         :conf/autotools
@@ -131,7 +132,12 @@
         :conf/meson
         (do
           (set builddir "build")
-          (checkrun :build/meson :meson "setup" builddir (stropt "--prefix" prefix)))
+          (checkrun :build/ninja :meson "setup" builddir (stropt "--prefix" prefix)))
+
+        :conf/cmake
+        (do
+          (set builddir "build")
+          (checkrun :build/make :cmake "-B" builddir "-S" "." (stropt "-DCMAKE_INSTALL_PREFIX" prefix)))
 
         :build/make
         (checkrun :install/make :make "-C" builddir (string/format "-j%d" (libc/get_nprocs)))
@@ -148,8 +154,8 @@
         :build/pep517
         (checkrun :install/pep517 :python "-m" "build" "--wheel" "--no-isolation")
 
-        :build/meson
-        (checkrun :install/meson :meson "compile" "-C" builddir)
+        :build/ninja
+        (checkrun :install/ninja :ninja "-C" builddir)
 
         :install/make
         (checkrun :move
@@ -160,6 +166,9 @@
                   (stropt "CMAKE_INSTALL_PREFIX" prefix)
                   (stropt "DESTDIR" destdir)
                   (stropt "INSTALL_ROOT" destdir))
+
+        :install/ninja
+        (checkrun :move :ninja "-C" builddir "install" (stropt "DESTDIR" destdir))
 
         :install/go
         (do
@@ -173,9 +182,6 @@
           (def crates (let [c (libc/glob "crates/*")] (if (nil? c) ["."] c)))
           (each crate crates
             (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" crate)))
-
-        :install/meson
-        (checkrun :move :meson "install" "-C" builddir (stropt "--destdir" destdir))
 
         :install/pep517
         (utils/letsome wheels (libc/glob "dist/*.whl")
