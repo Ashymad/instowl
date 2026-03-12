@@ -2,6 +2,7 @@
 (import ./libc)
 (import ./file)
 (import ./tools)
+(import ./utils)
 
 (def columns ((libc/ioctl 1 :TIOCGWINSZ) 1))
 
@@ -9,10 +10,7 @@
 (var ch (string/slice spinner 0 3))
 
 (defn rotate [ch]
-  (def nxt (+ 3 (string/find ch spinner)))
-  (if (= nxt (length spinner))
-    (string/slice spinner 0 3)
-    (string/slice spinner nxt (+ nxt 3))))
+  (utils/rotate ch spinner 3))
 
 (defn msg [state line logfile]
   (file/write logfile line "\n")
@@ -40,7 +38,7 @@
 
 (defn runp [state env & args]
   (def logfile (file/open "./instowl.log" :a))
-  (file/write logfile (string/join ["RUN" ;args "\n"] " "))
+  (file/write logfile (string/join ["RUN:" ;args "\n"] " "))
   (def proc (os/spawn args :e (table :err :pipe :out :pipe ;env)))
   (ev/gather
     (prinfer state logfile (proc :out))
@@ -58,13 +56,12 @@
 
 (defmacro checkrun [newstate cmd & args]
   (with-syms [$ret $cmd]
-    ~(let [,$cmd (tools/gettool ,cmd)]
-       (if (nil? ,$cmd)
-         (errexit (string/format "Unable to find the tool '%s'" ,cmd))
-         (let [,$ret (runp state env ,$cmd ,;args)]
-           (if (= ,$ret 0)
-             (set state ,newstate)
-             (errexit (string/format "Command '%s' failed with code: %d" ,$cmd ,$ret))))))))
+    ~(utils/letsome ,$cmd (tools/gettool ,cmd)
+      (let [,$ret (runp state env ,$cmd ,;args)]
+        (if (= ,$ret 0)
+          (set state ,newstate)
+          (errexit (string/format "Command '%s' failed with code: %d" ,$cmd ,$ret))))
+      (errexit (string/format "Unable to find the tool '%s'" ,cmd)))))
 
 (defn path/join [& args]
   (string/join [;args] "/"))
@@ -99,13 +96,17 @@
     (sh/rm "./instowl.log")
 
     (while (not= state :exit)
+      (def logfile (file/open "./instowl.log" :a))
+      (file/write logfile (string/join ["STATE:" state "\n"] " "))
+      (file/close logfile)
       (case state
         :init
         (cond
           (file/file-exists? "go.mod") (set state :build/go)
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
-          (file/file-exists? "pyproject.toml") (set state :build/python)
-          (not (nil? (libc/glob "*.pro"))) (set state :conf/qmake)
+          (file/file-exists? "pyproject.toml") (set state :build/pep517)
+          (file/file-exists? "setup.py") (set state :build/setuptools)
+          (utils/some? (libc/glob "*.pro")) (set state :conf/qmake)
           (file/file-exists? "configure") (set state :conf/configure)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
           (file/file-exists? "meson.build") (set state :conf/meson)
@@ -120,8 +121,12 @@
 
         :conf/qmake
         (do
+          (os/mkdir "build")
+          (set builddir "build")
           (set prefix "/usr/local")
-          (checkrun :build/make :qmake))
+          (os/cd builddir)
+          (checkrun :build/make :qmake "..")
+          (os/cd ".."))
 
         :conf/meson
         (do
@@ -129,7 +134,7 @@
           (checkrun :build/meson :meson "setup" builddir (stropt "--prefix" prefix)))
 
         :build/make
-        (checkrun :install/make :make (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/make :make "-C" builddir (string/format "-j%d" (libc/get_nprocs)))
 
         :build/go
         (checkrun :install/go :go "build" "-v")
@@ -137,15 +142,19 @@
         :build/cargo
         (checkrun :install/cargo :cargo "build" "--locked" "--release")
 
-        :build/python
-        (checkrun :install/python :python "-m" "build" "--wheel" "--no-isolation")
+        :build/setuptools
+        (checkrun :install/setuptools :python "setup.py" "build")
+
+        :build/pep517
+        (checkrun :install/pep517 :python "-m" "build" "--wheel" "--no-isolation")
 
         :build/meson
         (checkrun :install/meson :meson "compile" "-C" builddir)
 
         :install/make
-        (checkrun :install/post
+        (checkrun :move
                   :make
+                  "-C" builddir
                   "install"
                   (stropt "PREFIX" prefix)
                   (stropt "CMAKE_INSTALL_PREFIX" prefix)
@@ -156,35 +165,40 @@
         (do
           (set prefix "")
           (checkrun :install/go :go "install" "-v")
-          (checkrun :install/post :go "clean" "-modcache"))
+          (checkrun :move :go "clean" "-modcache"))
 
         :install/cargo
         (do
           (set prefix "")
           (def crates (let [c (libc/glob "crates/*")] (if (nil? c) ["."] c)))
           (each crate crates
-            (checkrun :install/post :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" crate)))
+            (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" crate)))
 
         :install/meson
-        (checkrun :install/post :meson "install" "-C" builddir (stropt "--destdir" destdir))
+        (checkrun :move :meson "install" "-C" builddir (stropt "--destdir" destdir))
 
-        :install/python
+        :install/pep517
+        (utils/letsome wheels (libc/glob "dist/*.whl")
+           (checkrun :post/python :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels)
+           (errexit "No wheels present"))
+
+        :install/setuptools
+        (checkrun :post/python :python "setup.py" "install" (stropt "--root" destdir) (stropt "--prefix" prefix))
+
+        :post/python
         (do
-          (def wheels (libc/glob "dist/*.whl"))
-          (if (nil? wheels)
-            (errexit "No wheels present")
-            (checkrun :install/post :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels)))
+          (if (file/dir-exists? (path/join destdir prefix "local")) (set prefix (path/join target "local")))
+          (set state :move))
 
-
-        :install/post
+        :move
         (do
           (def logfile (file/open "./instowl.log" :a))
-          (def installdir (string/join [destdir prefix]))
+          (def installdir (path/join destdir prefix))
           (if (file/dir-exists? installdir)
             (do
               (loop [file :in (sh/list-all-files installdir)]
-                (def dst (string/replace installdir pkgdir file))
-                (msg state (string/format "INST %s" dst) logfile)
+                (def dst (path/join pkgdir (string/slice file (length installdir))))
+                (msg state (string/format "MV: %s => %s" file dst) logfile)
                 (file/move-file file dst))
               (file/close logfile)
               (set state :stow))
@@ -195,12 +209,15 @@
 
         :error
         (do
-          (sh/rm (string/join [destdir]))
           (printf "\x1b[2K{%s}⸉!⸊→%s" state errormsg)
-          (set state :exit))
+          (set state :cleanup))
 
         :done
         (do
-          (sh/rm (string/join [destdir]))
           (printf "\x1b[2K{%s}⸉x⸊→Success" state)
+          (set state :cleanup))
+
+        :cleanup
+        (do
+          (sh/rm (string/join [destdir]))
           (set state :exit))))))

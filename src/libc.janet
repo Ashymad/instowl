@@ -1,3 +1,5 @@
+(import ./utils)
+
 (defmacro bind [name & types]
   (with-syms [$fn $sig]
     ~(let [,$fn (ffi/lookup (ffi/native) ,name)
@@ -29,18 +31,13 @@
       (c/globfree globbed)
       paths)))
 
-(defmacro letsome [name val & rest]
-  ~(let [,name ,val]
-     (if (nil? ,name) nil
-       ,;rest)))
-
 (def c/ioctl :private (bind "ioctl" :int :int :ulong :ptr))
 (def c/winsize :private (ffi/struct :short :short :short :short))
 (def c/ioctl/args :private
   @{:TIOCGWINSZ [21523 c/winsize [0 0 0 0]]})
 
 (defn ioctl [fd op]
-  (letsome args (c/ioctl/args op)
+  (utils/letsome args (c/ioctl/args op)
     (let [arg (ffi/write (args 1) (args 2))]
       (c/ioctl fd (args 0) arg)
       (ffi/read (args 1) arg))))
