@@ -9,6 +9,7 @@
     :go ["go"]
     :python ["python" "python3"]
     :cargo ["cargo"]
+    :meson ["meson"]
     :stow ["stow" "xstow"]))
 
 (defn gettool [tool]

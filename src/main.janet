@@ -94,6 +94,7 @@
     (var state :init)
     (var errormsg "Unknown")
     (var prefix target)
+    (var builddir ".")
 
     (sh/rm "./instowl.log")
 
@@ -103,10 +104,11 @@
         (cond
           (file/file-exists? "go.mod") (set state :build/go)
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
-          (file/file-exists? "requirements.txt") (set state :build/python)
+          (file/file-exists? "pyproject.toml") (set state :build/python)
           (not (nil? (libc/glob "*.pro"))) (set state :conf/qmake)
           (file/file-exists? "configure") (set state :conf/configure)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
+          (file/file-exists? "meson.build") (set state :conf/meson)
           (file/file-exists? "Makefile") (set state :build/make)
           (errexit "Unable to auto-detect the build system"))
 
@@ -121,6 +123,11 @@
           (set prefix "/usr/local")
           (checkrun :build/make :qmake))
 
+        :conf/meson
+        (do
+          (set builddir "build")
+          (checkrun :build/meson :meson "setup" builddir (stropt "--prefix" prefix)))
+
         :build/make
         (checkrun :install/make :make (string/format "-j%d" (libc/get_nprocs)))
 
@@ -132,6 +139,9 @@
 
         :build/python
         (checkrun :install/python :python "-m" "build" "--wheel" "--no-isolation")
+
+        :build/meson
+        (checkrun :install/meson :meson "compile" "-C" builddir)
 
         :install/make
         (checkrun :install/post
@@ -151,15 +161,19 @@
         :install/cargo
         (do
           (set prefix "")
-          (checkrun :install/post :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" "."))
+          (def crates (let [c (libc/glob "crates/*")] (if (nil? c) ["."] c)))
+          (each crate crates
+            (checkrun :install/post :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" crate)))
+
+        :install/meson
+        (checkrun :install/post :meson "install" "-C" builddir (stropt "--destdir" destdir))
 
         :install/python
         (do
           (def wheels (libc/glob "dist/*.whl"))
           (if (nil? wheels)
             (errexit "No wheels present")
-            (checkrun :install/post :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels))
-          (set prefix (path/join target "local")))
+            (checkrun :install/post :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels)))
 
 
         :install/post
