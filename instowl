@@ -1,0 +1,6 @@
+#!/usr/bin/env janet
+
+(import instowl/main)
+
+(defn main [& args]
+  (main/main ;args))

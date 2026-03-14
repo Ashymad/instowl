@@ -1,4 +1,5 @@
 (import ./libc)
+(import ./native/nftw)
 
 (defn file-exists? [path]
   (= (os/stat path :mode) :file))
@@ -12,6 +13,13 @@
 (defn move-file [src dst]
   (mkdirp (libc/dirname dst))
   (os/rename src dst))
+
+(defn rmrf [path]
+  (nftw/nftw path (fn [file stat ftype info]
+                    (if (= ftype :dp)
+                      (os/rmdir file)
+                      (os/rm file))
+                    0) 1024 :depth :phys))
 
 (defn which [exec]
   (var ret nil)

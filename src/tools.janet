@@ -8,6 +8,7 @@
     :qmake ["qmake" "qmake6"]
     :configure ["./configure"]
     :autoreconf ["autoreconf"]
+    :jpm ["jpm"]
     :go ["go"]
     :python ["python" "python3"]
     :cargo ["cargo"]

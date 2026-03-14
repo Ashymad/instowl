@@ -93,7 +93,7 @@
     (var prefix target)
     (var builddir ".")
 
-    (sh/rm "./instowl.log")
+    (os/rm "./instowl.log")
 
     (while (not= state :exit)
       (def logfile (file/open "./instowl.log" :a))
@@ -108,6 +108,7 @@
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
           (file/file-exists? "pyproject.toml") (set state :build/pep517)
           (file/file-exists? "setup.py") (set state :build/setuptools)
+          (file/file-exists? "project.janet") (set state :build/jpm)
           (utils/some? (libc/glob "*.pro")) (set state :conf/qmake)
           (file/file-exists? "CMakeLists.txt") (set state :conf/cmake)
           (file/file-exists? "configure.ac") (set state :conf/autotools)
@@ -157,6 +158,9 @@
         :build/ninja
         (checkrun :install/ninja :ninja "-C" builddir)
 
+        :build/jpm
+        (checkrun :install/jpm :jpm "build")
+
         :install/make
         (checkrun :move
                   :make
@@ -176,6 +180,16 @@
           (checkrun :install/go :go "install" "-v")
           (checkrun :move :go "clean" "-modcache"))
 
+        :install/jpm
+        (checkrun :move
+                  :jpm
+                  (stropt "--dest-dir" destdir)
+                  (stropt "--binpath" (path/join prefix "bin"))
+                  (stropt "--manpath" (path/join prefix "man"))
+                  (stropt "--modpath" (path/join prefix "lib" "janet"))
+                  (stropt "--libpath" (path/join prefix "lib"))
+                  "install")
+
         :install/cargo
         (do
           (set prefix "")
@@ -190,6 +204,7 @@
 
         :install/setuptools
         (checkrun :post/python :python "setup.py" "install" (stropt "--root" destdir) (stropt "--prefix" prefix))
+
 
         :post/python
         (do
@@ -211,7 +226,7 @@
             (errexit "The destination directory doesn't contain the prefix")))
 
         :stow
-        (checkrun :done :stow "-v" "-d" stowdir "-t" target pkg)
+        (checkrun :done :stow "-v" "-d" stowdir "-t" target "--override=.*" pkg)
 
         :error
         (do
@@ -225,5 +240,5 @@
 
         :cleanup
         (do
-          (sh/rm (string/join [destdir]))
+          (file/rmrf (string/join [destdir]))
           (set state :exit))))))
