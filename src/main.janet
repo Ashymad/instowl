@@ -1,8 +1,8 @@
-(import spork/sh)
 (import ./libc)
 (import ./file)
 (import ./tools)
 (import ./utils)
+(import ./native/nftw)
 
 (def columns ((libc/ioctl 1 :TIOCGWINSZ) 1))
 
@@ -217,13 +217,16 @@
           (def installdir (path/join destdir prefix))
           (if (file/dir-exists? installdir)
             (do
-              (loop [file :in (sh/list-all-files installdir)]
-                (def dst (path/join pkgdir (string/slice file (length installdir))))
-                (msg state (string/format "MV: %s => %s" file dst) logfile)
-                (file/move-file file dst))
-              (file/close logfile)
+              (nftw/nftw installdir
+                         (fn [file stat ftype info]
+                           (if (= ftype :f)
+                             (do
+                               (def dst (path/join pkgdir (string/slice file (length installdir))))
+                               (msg state (string/format "MV: %s => %s" file dst) logfile)
+                               (file/move-file file dst))) 0) :phys)
               (set state :stow))
-            (errexit "The destination directory doesn't contain the prefix")))
+            (errexit "The destination directory doesn't contain the prefix"))
+          (file/close logfile))
 
         :stow
         (checkrun :done :stow "-v" "-d" stowdir "-t" target "--override=.*" pkg)
