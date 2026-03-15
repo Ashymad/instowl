@@ -1,5 +1,4 @@
-typedef struct stat jstat_t;
-typedef mode_t jmode_t;
+#include "os.h"
 
 static int32_t janet_perm_to_unix(mode_t m) {
     return (int32_t) m;
@@ -124,12 +123,7 @@ static Janet os_stat_blocksize(const jstat_t *st) {
     return janet_wrap_number(st->st_blksize);
 }
 
-struct OsStatGetter {
-    const char *name;
-    Janet(*fn)(const jstat_t *st);
-};
-
-static const struct OsStatGetter os_stat_getters[] = {
+const struct OsStatGetter os_stat_getters[] = {
     {"dev", os_stat_dev},
     {"inode", os_stat_inode},
     {"mode", os_stat_mode},
@@ -147,47 +141,3 @@ static const struct OsStatGetter os_stat_getters[] = {
     {"changed", os_stat_changed},
     {NULL, NULL}
 };
-
-static Janet os_stat_or_lstat(int do_lstat, int32_t argc, Janet *argv) {
-    janet_sandbox_assert(JANET_SANDBOX_FS_READ);
-    janet_arity(argc, 1, 2);
-    const char *path = janet_getcstring(argv, 0);
-    JanetTable *tab = NULL;
-    const uint8_t *key = NULL;
-    if (argc == 2) {
-        if (janet_checktype(argv[1], JANET_KEYWORD)) {
-            key = janet_getkeyword(argv, 1);
-        } else {
-            tab = janet_gettable(argv, 1);
-        }
-    } else {
-        tab = janet_table(0);
-    }
-
-    /* Build result */
-    jstat_t st;
-    int res;
-    if (do_lstat) {
-        res = lstat(path, &st);
-    } else {
-        res = stat(path, &st);
-    }
-    if (-1 == res) {
-        return janet_wrap_nil();
-    }
-
-    if (NULL == key) {
-        /* Put results in table */
-        for (const struct OsStatGetter *sg = os_stat_getters; sg->name != NULL; sg++) {
-            janet_table_put(tab, janet_ckeywordv(sg->name), sg->fn(&st));
-        }
-        return janet_wrap_table(tab);
-    } else {
-        /* Get one result */
-        for (const struct OsStatGetter *sg = os_stat_getters; sg->name != NULL; sg++) {
-            if (janet_cstrcmp(key, sg->name)) continue;
-            return sg->fn(&st);
-        }
-        janet_panicf("unexpected keyword %v", janet_wrap_keyword(key));
-    }
-}

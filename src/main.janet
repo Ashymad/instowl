@@ -39,7 +39,7 @@
 (defn runp [state env & args]
   (def logfile (file/open "./instowl.log" :a))
   (file/write logfile (string/join ["RUN:" ;args "\n"] " "))
-  (def proc (os/spawn args :e (table :err :pipe :out :pipe ;env)))
+  (def proc (os/spawn args :e env))
   (ev/gather
     (prinfer state logfile (proc :out))
     (prinfer state logfile (proc :err))
@@ -78,15 +78,17 @@
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instowl.XXXXXX"))
 
-    (def env ["PATH" (string/join [(os/getenv "PATH") (path/join target "bin")] ":")
-              "PKG_CONFIG_PATH" (path/join target "lib" "pkgconfig")
-              "CFLAGS" (string/join ["-idirafter" (path/join target "include")] " ")
-              "PERL5LIB" (path/join target "lib" "perl5")
-              "GOPATH" destdir
-              "HOME" home
-              "CC" (os/getenv "CC")
-              "CXX" (os/getenv "CXX")
-              "CFLAGS" (os/getenv "CFLAGS")])
+    (def env (os/environ))
+    (merge-into env {:err :pipe
+                     :out :pipe
+                     "PATH" (string/join [(os/getenv "PATH") (path/join target "bin")] ":")
+                     "PKG_CONFIG_PATH" (path/join target "lib" "pkgconfig")
+                     "CFLAGS" (string/join ["-idirafter" (path/join target "include")] " ")
+                     "PERL5LIB" (path/join target "lib" "perl5")
+                     "GOPATH" destdir
+                     "CC" (os/getenv "CC")
+                     "CXX" (os/getenv "CXX")
+                     "CFLAGS" (os/getenv "CFLAGS")})
 
     (var state :init)
     (var errormsg "Unknown")

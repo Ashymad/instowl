@@ -1,2 +1,5 @@
 instowl.log
 build/
+src/native/nftw.so
+-I/home/szymon/.local/include
+compile_flags.txt

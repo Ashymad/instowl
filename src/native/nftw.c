@@ -4,7 +4,7 @@
 #include <ftw.h>
 #include <janet.h>
 
-#include "os.c"
+#include "os.h"
 
 static JanetFunction *janet_callback = NULL;
 
