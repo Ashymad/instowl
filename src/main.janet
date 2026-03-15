@@ -95,7 +95,7 @@
     (var prefix target)
     (var builddir ".")
 
-    (os/rm "./instowl.log")
+    (if (file/file-exists? "./instowl.log") (os/rm "./instowl.log"))
 
     (while (not= state :exit)
       (def logfile (file/open "./instowl.log" :a))
