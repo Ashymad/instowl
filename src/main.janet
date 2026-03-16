@@ -5,6 +5,7 @@
 (import ./native/nftw)
 
 (def columns ((libc/ioctl 1 :TIOCGWINSZ) 1))
+(def tty? (= (libc/isatty 1) 1))
 
 (def spinner "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 (var ch (string/slice spinner 0 3))
@@ -14,9 +15,12 @@
 
 (defn msg [state line logfile]
   (file/write logfile line "\n")
-  (def pre (string/format "\x1b[2K{%s}⸉%s⸊→" state ch))
-  (prinf "%s%s\r" pre (string/slice line 0 (min (- columns (length pre)) (length line))))
-  (flush))
+  (if tty?
+    (do
+      (def pre (string/format "\x1b[2K{%s}⸉%s⸊→" state ch))
+      (prinf "%s%s\r" pre (string/slice line 0 (max 0 (min (- columns (length pre)) (length line)))))
+      (flush))
+    (printf "{%s}→%s" state line)))
 
 (defn prinfer [state logfile pipe]
   (def buf @"")
@@ -44,7 +48,7 @@
     (prinfer state logfile (proc :out))
     (prinfer state logfile (proc :err))
     (os/proc-wait proc)
-    (while (= (get proc :return-code) nil)
+    (while (and tty? (nil? (get proc :return-code)))
       (ev/sleep 0.2) 
       (set ch (rotate ch))
       (prinf "{%s}⸉%s⸊\r" state ch)

@@ -73,6 +73,7 @@
   (ctry (c/sendfile out_fd in_fd offset/ptr count_)))
 
 (defbind get_nprocs :int)
+(defbind isatty :int :int)
 (defbind/str dirname)
 (defbind/str basename)
 (defbind/str mkdtemp)
