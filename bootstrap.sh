@@ -29,7 +29,7 @@ pushd jpm
 echo "[4/9] Building jpm"
 PREFIX="" DESTDIR="$ROOTDIR" JANET_PATH="$ROOTDIR/lib/janet" "$ROOTDIR/bin/janet" ./bootstrap.janet
 cp -r $ROOTDIR/$ROOTDIR/* $ROOTDIR/
-sed -i '1s@^@#!/usr/bin/env janet\n@' "$ROOTDIR/bin/jpm"
+sed -i '' '1s@^@#!/usr/bin/env janet\n@' "$ROOTDIR/bin/jpm"
 popd
 popd
 

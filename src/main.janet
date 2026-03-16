@@ -149,7 +149,12 @@
           (checkrun :build/make :cmake "-B" builddir "-S" "." (stropt "-DCMAKE_INSTALL_PREFIX" prefix)))
 
         :build/make
-        (checkrun :install/make :make "-C" builddir (string/format "-j%d" (libc/get_nprocs)))
+        (checkrun :install/make
+                  :make
+                  "-C" builddir
+                  ;(if (nil? (os/getenv "CC")) [] [(stropt "CC" (os/getenv "CC"))])
+                  ;(if (nil? (os/getenv "CXX")) [] [(stropt "CXX" (os/getenv "CXX"))])
+                  (string/format "-j%d" (libc/get_nprocs)))
 
         :build/go
         (checkrun :install/go :go "build" "-v")
