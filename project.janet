@@ -3,6 +3,7 @@
 
 (declare-binscript
   :main "instowl"
+  :hardcode-syspath true
   :is-janet true)
 
 (declare-native

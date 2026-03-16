@@ -78,6 +78,8 @@
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instowl.XXXXXX"))
 
+    (def adopt (= (get args 1) "--adopt"))
+
     (def env (os/environ))
     (merge-into env {:err :pipe
                      :out :pipe
@@ -231,7 +233,7 @@
           (file/close logfile))
 
         :stow
-        (checkrun :done :stow "-v" "-d" stowdir "-t" target "--override=.*" pkg)
+        (checkrun :done :stow "-v" "-d" stowdir "-t" target ;(if adopt ["--adopt"] []) pkg)
 
         :error
         (do

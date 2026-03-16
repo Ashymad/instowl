@@ -1,4 +1,5 @@
 (import ./utils)
+(import ./native/nftw)
 
 (defmacro bind [name & types]
   (with-syms [$fn $sig]
@@ -17,6 +18,13 @@
 
 (defmacro defbind/str [name]
   ~(def ,name (bind/str ,(string/join [name]))))
+
+(defmacro ctry [call]
+  (with-syms [$ret]
+    ~(let [,$ret ,call]
+       (if (= ,$ret -1)
+         (error (string/join ["Function failed with:" (nftw/strerror)] " "))
+         ,$ret))))
 
 (def c/glob :private (bind "glob" :int :string :int :ptr :ptr))
 (def c/globfree :private (bind "globfree" :void :ptr))
@@ -41,6 +49,28 @@
     (let [arg (ffi/write (args 1) (args 2))]
       (c/ioctl fd (args 0) arg)
       (ffi/read (args 1) arg))))
+
+(def c/sendfile :private (bind "sendfile" :ssize :int :int :ptr :size))
+
+(def c/lseek :private (bind "lseek" :int :int :int :int))
+
+(defn lseek [fd &opt whence offset]
+  (def whence_
+    (case whence
+      :set 0
+      :cur 1
+      :end 2
+      nil 1))
+  (def offset_ (if (nil? offset) 0 offset))
+  (c/lseek fd offset_ whence_))
+
+(defn sendfile [out_fd in_fd &opt offset count]
+  (def offset_ (if (nil? offset) (lseek in_fd) offset))
+  (var count_ (if (nil? count) (- (ctry (nftw/fstat in_fd :size)) offset_) count))
+  (def offset/ptr @"")
+  (buffer/push-uint64 offset/ptr :native offset_)
+  #(while (> (set count_ (- count_ (ctry (c/sendfile out_fd in_fd offset/ptr count_)))) 0)))
+  (ctry (c/sendfile out_fd in_fd offset/ptr count_)))
 
 (defbind get_nprocs :int)
 (defbind/str dirname)

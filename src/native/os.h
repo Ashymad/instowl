@@ -12,9 +12,5 @@
 typedef struct stat jstat_t;
 typedef mode_t jmode_t;
 
-struct OsStatGetter {
-    const char *name;
-    Janet(*fn)(const jstat_t *st);
-};
-
-extern const struct OsStatGetter os_stat_getters[];
+Janet stat2table(const jstat_t *st, const uint8_t *key);
+jmode_t os_getmode(const Janet *argv, int32_t n);
