@@ -231,7 +231,7 @@
                              (do
                                (def dst (path/join pkgdir (string/slice file (length installdir))))
                                (msg state (string/format "MV: %s => %s" file dst) logfile)
-                               (file/move-file file dst))) 0) :phys)
+                               (file/move-file file dst))) 0) 1024 :phys)
               (set state :stow))
             (errexit "The destination directory doesn't contain the prefix"))
           (file/close logfile))
