@@ -1,0 +1,9 @@
+image: alpine/edge
+packages:
+  - git
+  - gcc
+  - make
+tasks:
+- build: |
+    cd instowl
+    PATH="$PATH:$HOME/.local/bin" ./bootstrap.sh
