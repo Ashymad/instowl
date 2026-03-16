@@ -9,6 +9,8 @@ PREFIX="${PREFIX:-$HOME/.local}"
 SRCDIR="${SRCDIR:-$PREFIX/src}"
 PKGDIR="${PKGDIR:-$PREFIX/pkg}"
 
+mkdir -p "$SRCDIR"
+mkdir -p "$PKGDIR"
 ROOTDIR="$(mktemp -d)"
 
 pushd "$SRCDIR"
