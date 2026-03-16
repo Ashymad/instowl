@@ -3,6 +3,7 @@ packages:
   - git
   - gcc
   - make
+  - stow
 tasks:
 - build: |
     cd instowl
