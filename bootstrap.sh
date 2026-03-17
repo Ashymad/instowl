@@ -2,6 +2,15 @@
 
 set -e
 
+sedi() {
+    file="$1"
+    shift
+
+    sed "$@" "$1" > "$1".tmp
+    cat "$1".tmp > "$1"
+    rm "$1".tmp
+}
+
 BOOTDIR="$PWD"
 
 PREFIX="${PREFIX:-$HOME/.local}"
@@ -26,14 +35,16 @@ git clone https://github.com/janet-lang/jpm
 
 pushd jpm
 
+sedi project.janet 's/(dyn :modpath)/(dyn :dest-dir) (dyn :modpath)/'
+mkdir -p "$ROOTDIR/$ROOTDIR/lib/janet/jpm"
+
 echo "[4/9] Building jpm"
 PREFIX="" DESTDIR="$ROOTDIR" JANET_PATH="$ROOTDIR/lib/janet" "$ROOTDIR/bin/janet" ./bootstrap.janet
 popd
 popd
 
 cp -r $ROOTDIR/$ROOTDIR/* $ROOTDIR/
-sed '1s@^@#!/usr/bin/env janet\n@' "$ROOTDIR/bin/jpm" > "$ROOTDIR/bin/jpm.new"
-cat "$ROOTDIR/bin/jpm.new" > "$ROOTDIR/bin/jpm"
+sedi "$ROOTDIR/bin/jpm" '1s@^@#!/usr/bin/env janet\n@'
 
 echo "[5/9] Building instowl"
 "$ROOTDIR/bin/janet" "$ROOTDIR/bin/jpm" --headerpath="$ROOTDIR/include" build
