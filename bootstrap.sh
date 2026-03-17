@@ -35,7 +35,8 @@ git clone https://github.com/janet-lang/jpm
 
 pushd jpm
 
-sedi project.janet 's/(dyn :modpath)/(dyn :dest-dir) (dyn :modpath)/'
+sedi project.janet 's/(dyn :modpath)/(dyn :dest-dir)/'
+mkdir -p "$ROOTDIR/lib/janet/jpm"
 mkdir -p "$ROOTDIR/$ROOTDIR/lib/janet/jpm"
 
 echo "[4/9] Building jpm"
