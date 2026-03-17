@@ -6,9 +6,9 @@ sedi() {
     file="$1"
     shift
 
-    sed "$@" "$1" > "$1".tmp
-    cat "$1".tmp > "$1"
-    rm "$1".tmp
+    sed "$@" "$file" > "$file".tmp
+    cat "$file".tmp > "$file"
+    rm "$file".tmp
 }
 
 BOOTDIR="$PWD"
