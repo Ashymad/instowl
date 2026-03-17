@@ -28,10 +28,12 @@ pushd jpm
 
 echo "[4/9] Building jpm"
 PREFIX="" DESTDIR="$ROOTDIR" JANET_PATH="$ROOTDIR/lib/janet" "$ROOTDIR/bin/janet" ./bootstrap.janet
+popd
+popd
+
 cp -r $ROOTDIR/$ROOTDIR/* $ROOTDIR/
-sed -i '' '1s@^@#!/usr/bin/env janet\n@' "$ROOTDIR/bin/jpm"
-popd
-popd
+sed '1s@^@#!/usr/bin/env janet\n@' "$ROOTDIR/bin/jpm" > "$ROOTDIR/bin/jpm.new"
+mv "$ROOTDIR/bin/jpm.new" "$ROOTDIR/bin/jpm"
 
 echo "[5/9] Building instowl"
 "$ROOTDIR/bin/janet" "$ROOTDIR/bin/jpm" --headerpath="$ROOTDIR/include" build
