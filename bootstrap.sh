@@ -19,7 +19,7 @@ echo "[1/9] Cloning janet repo"
 git clone https://github.com/janet-lang/janet
 
 echo "[2/9] Building janet"
-PREFIX="" DESTDIR="$ROOTDIR" make -C janet install
+PREFIX="" DESTDIR="$ROOTDIR" make -C janet -j$(nproc) install
 
 echo "[3/9] Cloning jpm repo"
 git clone https://github.com/janet-lang/jpm
@@ -43,10 +43,9 @@ JPM="$ROOTDIR/bin/jpm" "$ROOTDIR/bin/janet" "$BOOTDIR/instowl.local"
 popd
 
 pushd "$SRCDIR/jpm"
-mkdir -p "$PREFIX/lib/janet/jpm"
 
 echo "[7/9] Instowling jpm"
-JPM="$ROOTDIR/bin/jpm" "$BOOTDIR/instowl.local" --adopt
+JPM="$ROOTDIR/bin/jpm" "$BOOTDIR/instowl.local"
 popd
 
 echo "[8/9] Instowling instowl"

@@ -64,13 +64,12 @@
   (def offset_ (if (nil? offset) 0 offset))
   (c/lseek fd offset_ whence_))
 
-(defn sendfile [out_fd in_fd &opt offset count]
+(defn sendfile [out_fd in_fd &opt offset cnt]
   (def offset_ (if (nil? offset) (lseek in_fd) offset))
-  (var count_ (if (nil? count) (- (ctry (nftw/fstat in_fd :size)) offset_) count))
+  (var cnt_ (if (nil? cnt) (- (ctry (nftw/fstat in_fd :size)) offset_) cnt))
   (def offset/ptr @"")
   (buffer/push-uint64 offset/ptr :native offset_)
-  #(while (> (set count_ (- count_ (ctry (c/sendfile out_fd in_fd offset/ptr count_)))) 0)))
-  (ctry (c/sendfile out_fd in_fd offset/ptr count_)))
+  (ctry (c/sendfile out_fd in_fd offset/ptr cnt_)))
 
 (defbind get_nprocs :int)
 (defbind isatty :int :int)

@@ -8,21 +8,21 @@
 (def tty? (= (libc/isatty 1) 1))
 
 (def spinner "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
-(var ch (string/slice spinner 0 3))
+(var spin (string/slice spinner 0 3))
 
-(defn rotate [ch]
-  (utils/rotate ch spinner 3))
+(defn rotate [spin_]
+  (utils/rotate spin_ spinner 3))
 
-(defn msg [state line logfile]
-  (file/write logfile line "\n")
+(defn message [state line log_file]
+  (file/write log_file line "\n")
   (if tty?
     (do
-      (def pre (string/format "\x1b[2K{%s}⸉%s⸊→" state ch))
+      (def pre (string/format "\x1b[2K{%s}⸉%s⸊→" state spin))
       (prinf "%s%s\r" pre (string/slice line 0 (max 0 (min (- columns (length pre)) (length line)))))
       (flush))
     (printf "{%s}→%s" state line)))
 
-(defn prinfer [state logfile pipe]
+(defn prinfer [state log_file pipe]
   (def buf @"")
   (while (ev/read pipe 1024 buf)
     (def lines (string/split "\n" buf))
@@ -30,7 +30,7 @@
     (if (> len 1)
       (loop [[idx line] :pairs lines]
         (if (< idx (- len 1))
-          (msg state line logfile)
+          (message state line log_file)
           (do
             (buffer/clear buf)
             (buffer/push-string buf line)))))))
@@ -41,21 +41,21 @@
      (set state :error)))
 
 (defn runp [state env & args]
-  (def logfile (file/open "./instowl.log" :a))
-  (file/write logfile (string/join ["RUN:" ;args "\n"] " "))
+  (def log_file (file/open "./instowl.log" :a))
+  (file/write log_file (string/join ["RUN:" ;args "\n"] " "))
   (def proc (os/spawn args :e env))
   (ev/gather
-    (prinfer state logfile (proc :out))
-    (prinfer state logfile (proc :err))
+    (prinfer state log_file (proc :out))
+    (prinfer state log_file (proc :err))
     (os/proc-wait proc)
     (while (and tty? (nil? (get proc :return-code)))
       (ev/sleep 0.2) 
-      (set ch (rotate ch))
-      (prinf "{%s}⸉%s⸊\r" state ch)
+      (set spin (rotate spin))
+      (prinf "{%s}⸉%s⸊\r" state spin)
       (flush)))
   (def code (get proc :return-code))
   (os/proc-close proc)
-  (file/close logfile)
+  (file/close log_file)
   code)
 
 (defmacro checkrun [newstate cmd & args]
@@ -82,8 +82,6 @@
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instowl.XXXXXX"))
 
-    (def adopt (= (get args 1) "--adopt"))
-
     (def env (os/environ))
     (merge-into env {:err :pipe
                      :out :pipe
@@ -104,9 +102,9 @@
     (if (file/file-exists? "./instowl.log") (os/rm "./instowl.log"))
 
     (while (not= state :exit)
-      (def logfile (file/open "./instowl.log" :a))
-      (file/write logfile (string/join ["STATE:" state "\n"] " "))
-      (file/close logfile)
+      (let [log_file (file/open "./instowl.log" :a)]
+        (file/write log_file (string/join ["STATE:" state "\n"] " "))
+        (file/close log_file))
       (case state
         :init
         (cond
@@ -225,9 +223,8 @@
           (set state :move))
 
         :move
-        (do
-          (def logfile (file/open "./instowl.log" :a))
-          (def installdir (path/join destdir prefix))
+        (let [log_file (file/open "./instowl.log" :a)
+              installdir (path/join destdir prefix)]
           (if (file/dir-exists? installdir)
             (do
               (nftw/nftw installdir
@@ -235,14 +232,14 @@
                            (if (= ftype :f)
                              (do
                                (def dst (path/join pkgdir (string/slice file (length installdir))))
-                               (msg state (string/format "MV: %s => %s" file dst) logfile)
+                               (message state (string/format "MV: %s => %s" file dst) log_file)
                                (file/move-file file dst))) 0) 1024 :phys)
               (set state :stow))
             (errexit "The destination directory doesn't contain the prefix"))
-          (file/close logfile))
+          (file/close log_file))
 
         :stow
-        (checkrun :done :stow "-v" "-d" stowdir "-t" target ;(if adopt ["--adopt"] []) pkg)
+        (checkrun :done :stow "-v" "-d" stowdir "-t" target pkg)
 
         :error
         (do
