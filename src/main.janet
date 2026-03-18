@@ -94,7 +94,7 @@
                      "CFLAGS" (os/getenv "CFLAGS")})
 
     (var ret 0)
-    (var state :init)
+    (var state (if-let [st (get args 1)] (keyword st) :init))
     (var errormsg "Unknown")
     (var prefix target)
     (var builddir ".")
@@ -150,6 +150,7 @@
         (checkrun :install/make
                   :make
                   "-C" builddir
+                  ;(if-let [mf (os/getenv "MAKEFLAGS")] (string/split " " mf) [])
                   ;(if (nil? (os/getenv "CC")) [] [(stropt "CC" (os/getenv "CC"))])
                   ;(if (nil? (os/getenv "CXX")) [] [(stropt "CXX" (os/getenv "CXX"))])
                   (string/format "-j%d" (libc/get_nprocs)))
@@ -261,6 +262,9 @@
         :cleanup
         (do
           (file/rmrf (string/join [destdir]))
-          (set state :exit))))
+          (set state :exit))
+        
+        #default
+        (errexit (string "Unknown state: " state))))
 ret
 )
