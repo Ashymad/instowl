@@ -196,7 +196,7 @@
                   :jpm
                   (stropt "--dest-dir" destdir)
                   (stropt "--binpath" (path/join prefix "bin"))
-                  (stropt "--manpath" (path/join prefix "man"))
+                  (stropt "--manpath" (path/join prefix "share" "man" "man1"))
                   (stropt "--modpath" (path/join prefix "lib" "janet"))
                   (stropt "--libpath" (path/join prefix "lib"))
                   "install")
@@ -225,16 +225,21 @@
         :move
         (let [log_file (file/open "./instowl.log" :a)
               installdir (path/join destdir prefix)]
+          (set state :stow)
           (if (file/dir-exists? installdir)
             (do
-              (nftw/nftw installdir
-                         (fn [file stat ftype info]
-                           (if (= ftype :f)
-                             (do
-                               (def dst (path/join pkgdir (string/slice file (length installdir))))
-                               (message state (string/format "MV: %s => %s" file dst) log_file)
-                               (file/move-file file dst))) 0) 1024 :phys)
-              (set state :stow))
+              (if (file/dir-exists? pkgdir)
+                (do
+                  (checkrun :stow :stow "-v" "-d" stowdir "-t" target "-D" pkg)
+                  (file/rmrf pkgdir)))
+              (if (not= state :error)
+                (nftw/nftw installdir
+                           (fn [file stat ftype info]
+                             (if (= ftype :f)
+                               (do
+                                 (def dst (path/join pkgdir (string/slice file (length installdir))))
+                                 (message state (string/format "MV: %s => %s" file dst) log_file)
+                                 (file/move-file file dst))) 0) 1024 :phys)))
             (errexit "The destination directory doesn't contain the prefix"))
           (file/close log_file))
 

@@ -12,7 +12,6 @@
 
 (defn copy-file [src dst]
   (def src_fd (libc/ctry (nftw/open src :r)))
-  (if (file-exists? dst) (os/rm dst))
   (def dst_fd (libc/ctry (nftw/open dst :wxc (nftw/fstat src_fd :int-permissions))))
   (libc/sendfile dst_fd src_fd)
   (nftw/close src_fd)

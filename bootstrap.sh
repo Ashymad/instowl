@@ -44,8 +44,6 @@ popd
 pushd "$SRCDIR/jpm"
 
 echo "[7/9] Instowling jpm"
-mkdir -p "$PKGDIR/jpm/lib/janet/jpm"
-stow -d "$PKGDIR" jpm
 JPM="$ROOTDIR/bin/jpm" "$BOOTDIR/instowl.local"
 popd
 
