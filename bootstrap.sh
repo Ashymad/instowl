@@ -35,16 +35,12 @@ git clone https://github.com/janet-lang/jpm
 
 pushd jpm
 
-sedi project.janet 's/(dyn :modpath)/(dyn :dest-dir)/'
-mkdir -p "$ROOTDIR/lib/janet/jpm"
-mkdir -p "$ROOTDIR/$ROOTDIR/lib/janet/jpm"
-
 echo "[4/9] Building jpm"
-PREFIX="" DESTDIR="$ROOTDIR" JANET_PATH="$ROOTDIR/lib/janet" "$ROOTDIR/bin/janet" ./bootstrap.janet
+PREFIX="" DESTDIR="$ROOTDIR" JANET_PATH="lib/janet" "$ROOTDIR/bin/janet" ./bootstrap.janet
+
 popd
 popd
 
-cp -r $ROOTDIR/$ROOTDIR/* $ROOTDIR/
 sedi "$ROOTDIR/bin/jpm" '1s@^@#!/usr/bin/env janet\n@'
 
 echo "[5/9] Building instowl"
