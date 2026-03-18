@@ -33,7 +33,7 @@ popd
 popd
 
 echo "[5/9] Building instowl"
-"$ROOTDIR/bin/jpm" --headerpath="$ROOTDIR/include" build
+"$ROOTDIR/bin/jpm" build
 
 pushd "$SRCDIR/janet"
 

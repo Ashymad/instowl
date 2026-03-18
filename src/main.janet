@@ -199,6 +199,7 @@
                   (stropt "--manpath" (path/join prefix "share" "man" "man1"))
                   (stropt "--modpath" (path/join prefix "lib" "janet"))
                   (stropt "--libpath" (path/join prefix "lib"))
+                  (stropt "--headerpath" (path/join prefix "include"))
                   "install")
 
         :install/cargo
