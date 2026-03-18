@@ -74,7 +74,6 @@
   (string/join [a b] "="))
 
 (defn main [& args]
-  (do
     (def home (os/getenv "HOME"))
     (def target (path/join home ".local"))
     (def stowdir (path/join target "pkg"))
@@ -94,6 +93,7 @@
                      "CXX" (os/getenv "CXX")
                      "CFLAGS" (os/getenv "CFLAGS")})
 
+    (var ret 0)
     (var state :init)
     (var errormsg "Unknown")
     (var prefix target)
@@ -243,6 +243,7 @@
 
         :error
         (do
+          (set ret 1)
           (printf "\x1b[2K{%s}⸉!⸊→%s" state errormsg)
           (set state :cleanup))
 
@@ -254,4 +255,6 @@
         :cleanup
         (do
           (file/rmrf (string/join [destdir]))
-          (set state :exit))))))
+          (set state :exit))))
+ret
+)
