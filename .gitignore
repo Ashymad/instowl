@@ -1,4 +1,4 @@
-instowl.log
+instow.log
 build/
 src/native/nftw.so
 -I/home/szymon/.local/include

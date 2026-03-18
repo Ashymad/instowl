@@ -41,7 +41,7 @@
      (set state :error)))
 
 (defn runp [state env & args]
-  (def log_file (file/open "./instowl.log" :a))
+  (def log_file (file/open "./instow.log" :a))
   (file/write log_file (string/join ["RUN:" ;args "\n"] " "))
   (def proc (os/spawn args :e env))
   (ev/gather
@@ -75,11 +75,11 @@
 
 (defn main [& args]
     (def home (os/getenv "HOME"))
-    (def target (path/join home ".local"))
-    (def stowdir (path/join target "pkg"))
+    (def target (path/join home ".instow"))
+    (def stowdir (path/join target "var" "pkg"))
     (def pkg (libc/basename (os/getenv "PWD")))
     (def pkgdir (path/join stowdir pkg))
-    (def destdir (libc/mkdtemp "/tmp/instowl.XXXXXX"))
+    (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
 
     (def env (os/environ))
     (merge-into env {:err :pipe
@@ -99,10 +99,10 @@
     (var prefix target)
     (var builddir ".")
 
-    (if (file/file-exists? "./instowl.log") (os/rm "./instowl.log"))
+    (if (file/file-exists? "./instow.log") (os/rm "./instow.log"))
 
     (while (not= state :exit)
-      (let [log_file (file/open "./instowl.log" :a)]
+      (let [log_file (file/open "./instow.log" :a)]
         (file/write log_file (string/join ["STATE:" state "\n"] " "))
         (file/close log_file))
       (case state
@@ -200,7 +200,7 @@
                   (stropt "--manpath" (path/join prefix "share" "man" "man1"))
                   (stropt "--modpath" (path/join prefix "lib" "janet"))
                   (stropt "--libpath" (path/join prefix "lib"))
-                  (stropt "--headerpath" (path/join prefix "include"))
+                  (stropt "--headerpath" (path/join prefix "include" "janet"))
                   "install")
 
         :install/cargo
@@ -225,7 +225,7 @@
           (set state :move))
 
         :move
-        (let [log_file (file/open "./instowl.log" :a)
+        (let [log_file (file/open "./instow.log" :a)
               installdir (path/join destdir prefix)]
           (set state :stow)
           (if (file/dir-exists? installdir)

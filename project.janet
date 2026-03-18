@@ -1,18 +1,18 @@
 (declare-project
-  :name "instowl")
+  :name "instow")
 
 (declare-binscript
-  :main "instowl"
+  :main "instow"
   :hardcode-syspath true
   :is-janet true)
 
 (declare-native
-  :name "instowl/native/nftw"
+  :name "instow/native/nftw"
   :source ["src/native/nftw.c"
            "src/native/os.c"])
 
 (declare-source
-  :prefix "instowl"
+  :prefix "instow"
   :source ["src/file.janet"
            "src/main.janet"
            "src/libc.janet"
@@ -20,7 +20,7 @@
            "src/utils.janet"])
 
 (def linkpath "src/native/nftw.so")
-(def buildpath (string/join [(os/getenv "PWD") "/build/instowl/native/nftw.so"]))
+(def buildpath (string/join [(os/getenv "PWD") "/build/instow/native/nftw.so"]))
 (def linkto (try (os/readlink linkpath) ([e f] nil)))
 
 (if (not= linkto buildpath )

@@ -4,10 +4,10 @@ set -e
 
 BOOTDIR="$PWD"
 
-PREFIX="${PREFIX:-$HOME/.local}"
+PREFIX="${PREFIX:-$HOME/.instow}"
 
-SRCDIR="${SRCDIR:-$PREFIX/src}"
-PKGDIR="${PKGDIR:-$PREFIX/pkg}"
+SRCDIR="${SRCDIR:-$PREFIX/var/src}"
+PKGDIR="${PKGDIR:-$PREFIX/var/pkg}"
 
 mkdir -p "$SRCDIR"
 mkdir -p "$PKGDIR"
@@ -32,23 +32,23 @@ cp -r "$ROOTDIR/$ROOTDIR/"* "$ROOTDIR/"
 popd
 popd
 
-echo "[5/9] Building instowl"
+echo "[5/9] Building instow"
 "$ROOTDIR/bin/jpm" build
 
 pushd "$SRCDIR/janet"
 
-echo "[6/9] Instowling janet"
-JPM="$ROOTDIR/bin/jpm" "$ROOTDIR/bin/janet" "$BOOTDIR/instowl.local"
+echo "[6/9] Instowing janet"
+JPM="$ROOTDIR/bin/jpm" "$ROOTDIR/bin/janet" "$BOOTDIR/instow"
 popd
 
 pushd "$SRCDIR/jpm"
 
-echo "[7/9] Instowling jpm"
-JPM="$ROOTDIR/bin/jpm" "$BOOTDIR/instowl.local"
+echo "[7/9] Instowing jpm"
+JPM="$ROOTDIR/bin/jpm" "$BOOTDIR/instow"
 popd
 
-echo "[8/9] Instowling instowl"
-./instowl.local
+echo "[8/9] Instowing instow"
+./instow
 
 echo "[9/9] Cleanup"
 rm -rf "$ROOTDIR"
