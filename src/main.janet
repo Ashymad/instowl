@@ -42,7 +42,7 @@
 
 (defn runp [state env & args]
   (def log_file (file/open "./instow.log" :a))
-  (file/write log_file (string/join ["RUN:" ;args "\n"] " "))
+  (file/write log_file (string "RUN: '" (string/join args "' '") "'\n"))
   (def proc (os/spawn args :e env))
   (ev/gather
     (prinfer state log_file (proc :out))
@@ -139,7 +139,7 @@
         :conf/meson
         (do
           (set builddir "build")
-          (checkrun :build/ninja :meson "setup" builddir (stropt "--prefix" prefix)))
+          (checkrun :build/meson :meson "setup" builddir (stropt "--prefix" prefix)))
 
         :conf/cmake
         (do
@@ -150,10 +150,11 @@
         (checkrun :install/make
                   :make
                   "-C" builddir
-                  ;(if-let [mf (os/getenv "MAKEFLAGS")] (string/split " " mf) [])
-                  ;(if (nil? (os/getenv "CC")) [] [(stropt "CC" (os/getenv "CC"))])
-                  ;(if (nil? (os/getenv "CXX")) [] [(stropt "CXX" (os/getenv "CXX"))])
-                  (string/format "-j%d" (libc/get_nprocs)))
+                  (string/format "-j%d" (libc/get_nprocs))
+                  ;(if-let [cc (os/getenv "CC")] [cc] [])
+                  ;(if-let[cxx (os/getenv "CXX")] [cxx] [])
+                  "--"
+                  ;(if-let [m (os/getenv "MAKETARGETS")] (string/split " " m) []))
 
         :build/go
         (checkrun :install/go :go "build" "-v")
@@ -167,8 +168,8 @@
         :build/pep517
         (checkrun :install/pep517 :python "-m" "build" "--wheel" "--no-isolation")
 
-        :build/ninja
-        (checkrun :install/ninja :ninja "-C" builddir)
+        :build/meson
+        (checkrun :install/meson :meson "compile" "-C" builddir)
 
         :build/jpm
         (checkrun :install/jpm :jpm "build")
@@ -183,8 +184,8 @@
                   (stropt "DESTDIR" destdir)
                   (stropt "INSTALL_ROOT" destdir))
 
-        :install/ninja
-        (checkrun :move :ninja "-C" builddir "install" (stropt "DESTDIR" destdir))
+        :install/meson
+        (checkrun :move :meson "install" "-C" builddir (stropt "--destdir" destdir))
 
         :install/go
         (do

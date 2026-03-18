@@ -9,6 +9,8 @@ PREFIX="${PREFIX:-$HOME/.instow}"
 SRCDIR="${SRCDIR:-$PREFIX/var/src}"
 PKGDIR="${PKGDIR:-$PREFIX/var/pkg}"
 
+PATH="$PATH:$PREFIX/bin"
+
 mkdir -p "$SRCDIR"
 mkdir -p "$PKGDIR"
 ROOTDIR="$(mktemp -d)"
