@@ -131,7 +131,7 @@
         (do
           (os/mkdir "build")
           (set builddir "build")
-          (set prefix "/usr/local")
+          (set prefix "/usr/")
           (os/cd builddir)
           (checkrun :build/make :qmake "..")
           (os/cd ".."))
@@ -175,7 +175,7 @@
         (checkrun :install/jpm :jpm "build")
 
         :install/make
-        (checkrun :move
+        (checkrun :post/detectprefix
                   :make
                   "-C" builddir
                   "install"
@@ -213,16 +213,16 @@
 
         :install/pep517
         (utils/letsome wheels (libc/glob "dist/*.whl")
-           (checkrun :post/python :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels)
+           (checkrun :post/detectprefix :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels)
            (errexit "No wheels present"))
 
         :install/setuptools
-        (checkrun :post/python :python "setup.py" "install" (stropt "--root" destdir) (stropt "--prefix" prefix))
+        (checkrun :post/detectprefix :python "setup.py" "install" (stropt "--root" destdir) (stropt "--prefix" prefix))
 
 
-        :post/python
+        :post/detectprefix
         (do
-          (if (file/dir-exists? (path/join destdir prefix "local")) (set prefix (path/join target "local")))
+          (if (file/dir-exists? (path/join destdir prefix "local")) (set prefix (path/join prefix "local")))
           (set state :move))
 
         :move
