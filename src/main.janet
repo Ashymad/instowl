@@ -76,7 +76,7 @@
 (defn main [& args]
     (def home (os/getenv "HOME"))
     (def target (path/join home ".instow"))
-    (def stowdir (path/join target "var" "pkg"))
+    (def stowdir (path/join target "stw" "pkg"))
     (def pkg (libc/basename (os/getenv "PWD")))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))

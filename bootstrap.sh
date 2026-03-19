@@ -6,8 +6,8 @@ BOOTDIR="$PWD"
 
 PREFIX="${PREFIX:-$HOME/.instow}"
 
-SRCDIR="${SRCDIR:-$PREFIX/var/src}"
-PKGDIR="${PKGDIR:-$PREFIX/var/pkg}"
+SRCDIR="${SRCDIR:-$PREFIX/stw/src}"
+PKGDIR="${PKGDIR:-$PREFIX/stw/pkg}"
 
 PATH="$PATH:$PREFIX/bin"
 
