@@ -117,12 +117,16 @@
           (file/file-exists? "project.janet") (set state :build/jpm)
           (utils/some? (libc/glob "*.pro")) (set state :conf/qmake)
           (file/file-exists? "CMakeLists.txt") (set state :conf/cmake)
-          (file/file-exists? "configure.ac") (set state :conf/autotools)
+          (file/file-exists? "autogen.sh") (set state :conf/autogen)
+          (file/file-exists? "configure.ac") (set state :conf/autoreconf)
           (file/file-exists? "meson.build") (set state :conf/meson)
           (errexit "Unable to auto-detect the build system"))
 
-        :conf/autotools
+        :conf/autoreconf
         (checkrun :conf/configure :autoreconf "-vi") 
+
+        :conf/autogen
+        (checkrun :conf/configure :autogen) 
 
         :conf/configure
         (checkrun :build/make :configure (stropt "--prefix" prefix))

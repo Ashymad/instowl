@@ -7,6 +7,7 @@
     :cmake ["cmake"]
     :qmake ["qmake" "qmake6"]
     :configure ["./configure"]
+    :autogen ["./autogen.sh"]
     :autoreconf ["autoreconf"]
     :jpm ["jpm"]
     :go ["go"]
