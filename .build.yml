@@ -6,5 +6,5 @@ packages:
   - stow
 tasks:
 - build: |
-    cd instowl
-    PATH="$PATH:$HOME/.local/bin" ./bootstrap.sh
+    cd instow
+    ./bootstrap.sh
