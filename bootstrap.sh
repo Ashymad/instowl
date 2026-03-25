@@ -4,10 +4,10 @@ set -e
 
 BOOTDIR="$PWD"
 
-PREFIX="${PREFIX:-$HOME/.instow}"
+PREFIX="${PREFIX:-$HOME/.usr/local/}"
 
-SRCDIR="${SRCDIR:-$PREFIX/stw/src}"
-PKGDIR="${PKGDIR:-$PREFIX/stw/pkg}"
+SRCDIR="${SRCDIR:-$HOME/.usr/src/}"
+PKGDIR="${PKGDIR:-$PREFIX/stow}"
 
 PATH="$PATH:$PREFIX/bin"
 

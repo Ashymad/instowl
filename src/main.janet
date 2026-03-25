@@ -75,8 +75,12 @@
 
 (defn main [& args]
     (def home (os/getenv "HOME"))
-    (def target (path/join home ".instow"))
-    (def stowdir (path/join target "stw" "pkg"))
+    (def target (path/join home ".usr" "local"))
+    (def bindir (path/join target "bin"))
+    (def mandir (path/join target "share" "man"))
+    (def headerdir (path/join target "include"))
+    (def libdir  (path/join target "lib"))
+    (def stowdir (path/join target "stow"))
     (def pkg (libc/basename (os/getenv "PWD")))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
@@ -84,14 +88,14 @@
     (def env (os/environ))
     (merge-into env {:err :pipe
                      :out :pipe
-                     "PATH" (string/join [(os/getenv "PATH") (path/join target "bin")] ":")
-                     "PKG_CONFIG_PATH" (path/join target "lib" "pkgconfig")
-                     "CFLAGS" (string/join ["-idirafter" (path/join target "include")] " ")
-                     "PERL5LIB" (path/join target "lib" "perl5")
-                     "GOPATH" destdir
-                     "CC" (os/getenv "CC")
-                     "CXX" (os/getenv "CXX")
-                     "CFLAGS" (os/getenv "CFLAGS")})
+                     "PATH" (string/join [(os/getenv "PATH") bindir] ":")
+                     "PKG_CONFIG_PATH" (path/join libdir "pkgconfig")
+                     "CFLAGS" (string/join
+                                [(stropt "--include-directory-after" headerdir)
+                                (stropt "-Wl,-rpath" libdir)
+                                (stropt "--library-directory" libdir)] " ")
+                     "PERL5LIB" (path/join libdir "perl5")
+                     "GOPATH" destdir})
 
     (var ret 0)
     (var state (if-let [st (get args 1)] (keyword st) :init))
@@ -201,11 +205,11 @@
         (checkrun :move
                   :jpm
                   (stropt "--dest-dir" destdir)
-                  (stropt "--binpath" (path/join prefix "bin"))
-                  (stropt "--manpath" (path/join prefix "share" "man" "man1"))
-                  (stropt "--modpath" (path/join prefix "lib" "janet"))
-                  (stropt "--libpath" (path/join prefix "lib"))
-                  (stropt "--headerpath" (path/join prefix "include" "janet"))
+                  (stropt "--binpath" bindir)
+                  (stropt "--manpath" (path/join mandir "man1"))
+                  (stropt "--modpath" (path/join libdir "janet"))
+                  (stropt "--libpath" libdir)
+                  (stropt "--headerpath" (path/join headerdir "janet"))
                   "install")
 
         :install/cargo
