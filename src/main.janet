@@ -215,9 +215,7 @@
         :install/cargo
         (do
           (set prefix "")
-          (def crates (let [c (libc/glob "crates/*")] (if (nil? c) ["."] c)))
-          (each crate crates
-            (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" crate)))
+          (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir))
 
         :install/pep517
         (utils/letsome wheels (libc/glob "dist/*.whl")
