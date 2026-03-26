@@ -159,8 +159,8 @@
                   :make
                   "-C" builddir
                   (string/format "-j%d" (libc/get_nprocs))
-                  ;(if-let [cc (os/getenv "CC")] [cc] [])
-                  ;(if-let[cxx (os/getenv "CXX")] [cxx] [])
+                  ;(if-let [cc (os/getenv "CC")] [(stropt "CC" cc)] [])
+                  ;(if-let[cxx (os/getenv "CXX")] [(stropt "CXX" cxx)] [])
                   "--"
                   ;(if-let [m (os/getenv "MAKETARGETS")] (string/split " " m) []))
 
