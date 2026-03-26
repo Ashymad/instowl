@@ -236,13 +236,13 @@
         :move
         (let [log_file (file/open "./instow.log" :a)
               installdir (path/join destdir prefix)]
-          (set state :stow)
           (if (file/dir-exists? installdir)
             (do
               (if (file/dir-exists? pkgdir)
                 (do
                   (checkrun :stow :stow "-v" "-d" stowdir "-t" target "-D" pkg)
                   (file/rmrf pkgdir)))
+              (set state (if (nil? (libc/glob (path/join installdir "lib" "*.so.*"))) :stow :ldconfig))
               (if (not= state :error)
                 (nftw/nftw installdir
                            (fn [file stat ftype info]
@@ -253,6 +253,9 @@
                                  (file/move-file file dst))) 0) 1024 :phys)))
             (errexit "The destination directory doesn't contain the prefix"))
           (file/close log_file))
+
+        :ldconfig
+        (checkrun :stow :ldconfig "-vNn" (path/join pkgdir "lib"))
 
         :stow
         (checkrun :done :stow "-v" "-d" stowdir "-t" target pkg)

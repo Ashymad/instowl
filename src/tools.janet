@@ -9,6 +9,7 @@
     :configure ["./configure"]
     :autogen ["./autogen.sh"]
     :autoreconf ["autoreconf"]
+    :ldconfig ["ldconfig"]
     :jpm ["jpm"]
     :go ["go"]
     :python ["python" "python3"]
