@@ -215,7 +215,7 @@
         :install/cargo
         (do
           (set prefix "")
-          (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir))
+          (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" "."))
 
         :install/pep517
         (utils/letsome wheels (libc/glob "dist/*.whl")
