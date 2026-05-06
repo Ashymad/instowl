@@ -13,6 +13,7 @@
     :jpm ["jpm"]
     :go ["go"]
     :python ["python" "python3"]
+    :pip ["pip" "pip3"]
     :cargo ["cargo"]
     :meson ["meson"]
     :stow ["stow" "xstow"]))

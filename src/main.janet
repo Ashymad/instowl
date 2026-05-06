@@ -116,8 +116,8 @@
           (file/file-exists? "Makefile") (set state :build/make)
           (file/file-exists? "go.mod") (set state :build/go)
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
-          (file/file-exists? "pyproject.toml") (set state :build/pep517)
-          (file/file-exists? "setup.py") (set state :build/setuptools)
+          (or (file/file-exists? "setup.py")
+              (file/file-exists? "pyproject.toml")) (set state :build/pip)
           (file/file-exists? "project.janet") (set state :build/jpm)
           (utils/some? (libc/glob "*.pro")) (set state :conf/qmake)
           (file/file-exists? "CMakeLists.txt") (set state :conf/cmake)
@@ -170,11 +170,11 @@
         :build/cargo
         (checkrun :install/cargo :cargo "build" "--locked" "--release")
 
-        :build/setuptools
-        (checkrun :install/setuptools :python "setup.py" "build")
+        :build/pip
+        (do
+          (set builddir "build")
+          (checkrun :install/pip :pip "wheel" "." "-w" builddir "--no-build-isolation" "--no-deps"))
 
-        :build/pep517
-        (checkrun :install/pep517 :python "-m" "build" "--wheel" "--no-isolation")
 
         :build/meson
         (checkrun :install/meson :meson "compile" "-C" builddir)
@@ -217,14 +217,17 @@
           (set prefix "")
           (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" "."))
 
-        :install/pep517
-        (utils/letsome wheels (libc/glob "dist/*.whl")
-           (checkrun :post/detectprefix :python "-m" "installer" (stropt "--destdir" destdir) (stropt "--prefix" prefix) ;wheels)
+        :install/pip
+        (utils/letsome wheels (libc/glob (path/join builddir "*.whl"))
+           (checkrun :post/detectprefix
+                     :pip "install"
+                     (stropt "--root" destdir)
+                     (stropt "--prefix" prefix)
+                     "--no-build-isolation"
+                     "--no-deps"
+                     "--force-reinstall"
+                     ;wheels)
            (errexit "No wheels present"))
-
-        :install/setuptools
-        (checkrun :post/detectprefix :python "setup.py" "install" (stropt "--root" destdir) (stropt "--prefix" prefix))
-
 
         :post/detectprefix
         (do
