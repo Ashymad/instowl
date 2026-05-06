@@ -188,6 +188,7 @@
                   "-C" builddir
                   "install"
                   (stropt "PREFIX" prefix)
+                  (stropt "prefix" prefix)
                   (stropt "CMAKE_INSTALL_PREFIX" prefix)
                   (stropt "DESTDIR" destdir)
                   (stropt "INSTALL_ROOT" destdir))
