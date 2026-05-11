@@ -252,7 +252,7 @@
               (if (not= state :error)
                 (nftw/nftw installdir
                            (fn [file stat ftype info]
-                             (if (= ftype :f)
+                             (if (or (= ftype :f) (= ftype :sl))
                                (do
                                  (def dst (path/join pkgdir (string/slice file (length installdir))))
                                  (message state (string/format "MV: %s => %s" file dst) log_file)
