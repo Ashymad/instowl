@@ -168,7 +168,9 @@
         (checkrun :install/go :go "build" "-v")
 
         :build/cargo
-        (checkrun :install/cargo :cargo "build" "--locked" "--release")
+        (do
+          (checkrun :install/cargo :cargo "build" "--locked" "--release")
+          (if (file/file-exists? "install.yml") (set state :install/rinstall)))
 
         :build/pip
         (do
@@ -212,6 +214,8 @@
                   (stropt "--libpath" libdir)
                   (stropt "--headerpath" (path/join headerdir "janet"))
                   "install")
+        :install/rinstall
+        (checkrun :move :rinstall "install" "-y" "--destdir" destdir "--packaging" "--prefix" prefix)
 
         :install/cargo
         (do

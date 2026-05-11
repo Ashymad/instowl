@@ -16,6 +16,7 @@
     :pip ["pip" "pip3"]
     :cargo ["cargo"]
     :meson ["meson"]
+    :rinstall ["rinstall"]
     :stow ["stow" "xstow"]))
 
 (defn gettool [tool]
