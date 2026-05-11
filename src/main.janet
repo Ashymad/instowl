@@ -79,7 +79,9 @@
     (def bindir (path/join target "bin"))
     (def mandir (path/join target "share" "man"))
     (def headerdir (path/join target "include"))
-    (def libdir  (path/join target "lib"))
+    (def libdir (path/join target "lib"))
+    (def triplet "x86_64-linux-gnu")
+    (def syslibdir (path/join libdir triplet))
     (def stowdir (path/join target "stow"))
     (def pkg (libc/basename (os/getenv "PWD")))
     (def pkgdir (path/join stowdir pkg))
@@ -89,11 +91,24 @@
     (merge-into env {:err :pipe
                      :out :pipe
                      "PATH" (string/join [(os/getenv "PATH") bindir] ":")
-                     "PKG_CONFIG_PATH" (path/join libdir "pkgconfig")
+                     "PKG_CONFIG_PATH" (string/join
+                                         [(path/join libdir "pkgconfig")
+                                          (path/join syslibdir "pkgconfig")] ":")
                      "CFLAGS" (string/join
                                 [(stropt "--include-directory-after" headerdir)
                                 (stropt "-Wl,-rpath" libdir)
-                                (stropt "--library-directory" libdir)] " ")
+                                (stropt "-Wl,-rpath" syslibdir)
+                                (stropt "--library-directory" libdir)
+                                (stropt "--library-directory" syslibdir)] " ")
+                     "CXXFLAGS" (string/join
+                                  [(stropt "--include-directory-after" headerdir)
+                                   (stropt "-Wl,-rpath" libdir)
+                                   (stropt "-Wl,-rpath" syslibdir)
+                                   (stropt "--library-directory" libdir)
+                                   (stropt "--library-directory" syslibdir)] " ")
+                     "RUSTFLAGS" (string/join
+                                   ["-C" (string "link-args=-Wl,-rpath," libdir)
+                                    "-C" (string "link-args=-Wl,-rpath," syslibdir)] " ")
                      "PERL5LIB" (path/join libdir "perl5")
                      "GOPATH" destdir})
 
@@ -169,7 +184,7 @@
 
         :build/cargo
         (do
-          (checkrun :install/cargo :cargo "build" "--locked" "--release")
+          (checkrun :install/cargo :cargo "rustc" "--locked" "--release")
           (if (file/file-exists? "install.yml") (set state :install/rinstall)))
 
         :build/pip
@@ -220,7 +235,7 @@
         :install/cargo
         (do
           (set prefix "")
-          (checkrun :move :cargo "install" "--force" "--offline" "--locked" "--no-track" "--root" destdir "--path" "."))
+          (checkrun :move :cargo "install" "--force" "--frozen" "--no-track" "--root" destdir "--path" "."))
 
         :install/pip
         (utils/letsome wheels (libc/glob (path/join builddir "*.whl"))
