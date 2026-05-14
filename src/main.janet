@@ -40,6 +40,15 @@
      (set errormsg ,msg)
      (set state :error)))
 
+(defn procout [& args]
+  (def proc (os/spawn args :px {:out :pipe}))
+  (def buf @"")
+  (ev/gather
+    (ev/read (proc :out) :all buf)
+    (os/proc-wait proc))
+  (os/proc-close proc)
+  buf)
+
 (defn runp [state env & args]
   (def log_file (file/open "./instow.log" :a))
   (file/write log_file (string "RUN: '" (string/join args "' '") "'\n"))
@@ -80,7 +89,7 @@
     (def mandir (path/join target "share" "man"))
     (def headerdir (path/join target "include"))
     (def libdir (path/join target "lib"))
-    (def triplet "x86_64-linux-gnu")
+    (def triplet (string/slice (procout "gcc" "-dumpmachine") 0 -2))
     (def syslibdir (path/join libdir triplet))
     (def stowdir (path/join target "stow"))
     (def pkg (libc/basename (os/getenv "PWD")))
@@ -98,14 +107,14 @@
                                 [(stropt "--include-directory-after" headerdir)
                                 (stropt "-Wl,-rpath" libdir)
                                 (stropt "-Wl,-rpath" syslibdir)
-                                (stropt "--library-directory" libdir)
-                                (stropt "--library-directory" syslibdir)] " ")
+                                (string "-L" libdir)
+                                (string "-L" syslibdir)] " ")
                      "CXXFLAGS" (string/join
                                   [(stropt "--include-directory-after" headerdir)
                                    (stropt "-Wl,-rpath" libdir)
                                    (stropt "-Wl,-rpath" syslibdir)
-                                   (stropt "--library-directory" libdir)
-                                   (stropt "--library-directory" syslibdir)] " ")
+                                   (string "-L" libdir)
+                                   (string "-L" syslibdir)] " ")
                      "RUSTFLAGS" (string/join
                                    ["-C" (string "link-args=-Wl,-rpath," libdir)
                                     "-C" (string "link-args=-Wl,-rpath," syslibdir)] " ")
@@ -152,12 +161,16 @@
 
         :conf/qmake
         (do
-          (os/mkdir "build")
           (set builddir "build")
           (set prefix "/usr/")
-          (os/cd builddir)
-          (checkrun :build/make :qmake "..")
-          (os/cd ".."))
+          (checkrun :build/make
+                    :qmake
+                    (stropt "QMAKE_CXXFLAGS" (env "CXXFLAGS"))
+                    (stropt "QMAKE_CFLAGS" (env "CFLAGS"))
+                    (string "QMAKE_LIBDIR+=" libdir " " syslibdir)
+                    (string "QMAKE_RPATHDIR+=" libdir " " syslibdir)
+                    "-o" (path/join builddir "Makefile")
+                    ))
 
         :conf/meson
         (do
