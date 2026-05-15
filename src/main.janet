@@ -108,13 +108,15 @@
                                 (stropt "-Wl,-rpath" libdir)
                                 (stropt "-Wl,-rpath" syslibdir)
                                 (string "-L" libdir)
-                                (string "-L" syslibdir)] " ")
+                                (string "-L" syslibdir)
+                                "-Wno-unused-command-line-argument"] " ")
                      "CXXFLAGS" (string/join
                                   [(stropt "--include-directory-after" headerdir)
                                    (stropt "-Wl,-rpath" libdir)
                                    (stropt "-Wl,-rpath" syslibdir)
                                    (string "-L" libdir)
-                                   (string "-L" syslibdir)] " ")
+                                   (string "-L" syslibdir)
+                                   "-Wno-unused-command-line-argument"] " ")
                      "RUSTFLAGS" (string/join
                                    ["-C" (string "link-args=-Wl,-rpath," libdir)
                                     "-C" (string "link-args=-Wl,-rpath," syslibdir)] " ")
@@ -197,7 +199,7 @@
 
         :build/cargo
         (do
-          (checkrun :install/cargo :cargo "rustc" "--locked" "--release")
+          (checkrun :install/cargo :cargo "build" "--locked" "--release")
           (if (file/file-exists? "install.yml") (set state :install/rinstall)))
 
         :build/pip
