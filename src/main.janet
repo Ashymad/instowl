@@ -104,14 +104,16 @@
                                          [(path/join libdir "pkgconfig")
                                           (path/join syslibdir "pkgconfig")] ":")
                      "CFLAGS" (string/join
-                                [(stropt "--include-directory-after" headerdir)
-                                (stropt "-Wl,-rpath" libdir)
-                                (stropt "-Wl,-rpath" syslibdir)
-                                (string "-L" libdir)
-                                (string "-L" syslibdir)
-                                "-Wno-unused-command-line-argument"] " ")
+                                [(get env "CFLAGS" "")
+                                 (stropt "--include-directory-after" headerdir)
+                                 (stropt "-Wl,-rpath" libdir)
+                                 (stropt "-Wl,-rpath" syslibdir)
+                                 (string "-L" libdir)
+                                 (string "-L" syslibdir)
+                                 "-Wno-unused-command-line-argument"] " ")
                      "CXXFLAGS" (string/join
-                                  [(stropt "--include-directory-after" headerdir)
+                                  [(get env "CXXFLAGS" "")
+                                   (stropt "--include-directory-after" headerdir)
                                    (stropt "-Wl,-rpath" libdir)
                                    (stropt "-Wl,-rpath" syslibdir)
                                    (string "-L" libdir)
@@ -219,6 +221,7 @@
                   :make
                   "-C" builddir
                   "install"
+                  ;(if-let [mf (env "MAKEFLAGS")] (string/split " " mf) [])
                   (stropt "PREFIX" prefix)
                   (stropt "prefix" prefix)
                   (stropt "CMAKE_INSTALL_PREFIX" prefix)
