@@ -152,6 +152,7 @@
           (file/file-exists? "autogen.sh") (set state :conf/autogen)
           (file/file-exists? "configure.ac") (set state :conf/autoreconf)
           (file/file-exists? "meson.build") (set state :conf/meson)
+          (file/file-exists? "wscript") (set state :conf/waf)
           (errexit "Unable to auto-detect the build system"))
 
         :conf/autoreconf
@@ -162,6 +163,11 @@
 
         :conf/configure
         (checkrun :build/make :configure (stropt "--prefix" prefix))
+
+        :conf/waf
+        (do
+          (set builddir "build")
+          (checkrun :build/waf :waf "configure" "-o" builddir "--prefix" prefix))
 
         :conf/qmake
         (do
@@ -199,6 +205,9 @@
         :build/go
         (checkrun :install/go :go "build" "-v")
 
+        :build/waf
+        (checkrun :install/waf :waf "build" "-o" builddir)
+
         :build/cargo
         (do
           (checkrun :install/cargo :cargo "build" "--locked" "--release")
@@ -230,6 +239,9 @@
 
         :install/meson
         (checkrun :move :meson "install" "-C" builddir (stropt "--destdir" destdir))
+
+        :install/waf
+        (checkrun :move :waf "install" "-o" builddir "--destdir" destdir)
 
         :install/go
         (do

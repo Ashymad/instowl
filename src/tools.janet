@@ -16,6 +16,7 @@
     :pip ["pip" "pip3"]
     :cargo ["cargo"]
     :meson ["meson"]
+    :waf ["./waf" "waf"]
     :rinstall ["rinstall"]
     :stow ["stow" "xstow"]))
 
