@@ -153,6 +153,7 @@
           (file/file-exists? "configure.ac") (set state :conf/autoreconf)
           (file/file-exists? "meson.build") (set state :conf/meson)
           (file/file-exists? "wscript") (set state :conf/waf)
+          (file/file-exists? "package.json") (set state :conf/npm)
           (errexit "Unable to auto-detect the build system"))
 
         :conf/autoreconf
@@ -192,6 +193,13 @@
           (set builddir "build")
           (checkrun :build/make :cmake "-B" builddir "-S" "." (stropt "-DCMAKE_INSTALL_PREFIX" prefix)))
 
+        :conf/npm
+        (checkrun :build/npm
+                  :npm "install"
+                  "--cache" (path/join builddir ".npm")
+                  "--loglevel" "verbose"
+                  "--include-workspace-root")
+
         :build/make
         (checkrun :install/make
                   :make
@@ -222,6 +230,13 @@
         :build/meson
         (checkrun :install/meson :meson "compile" "-C" builddir)
 
+        :build/npm
+        (checkrun :install/npm
+                  :npm "run" "build"
+                  "--cache" (path/join builddir ".npm")
+                  "--loglevel" "verbose"
+                  "--include-workspace-root")
+
         :build/jpm
         (checkrun :install/jpm :jpm "build")
 
@@ -248,6 +263,15 @@
           (set prefix "")
           (checkrun :install/go :go "install" "-v")
           (checkrun :move :go "clean" "-modcache"))
+
+        :install/npm
+        (do
+          (set prefix "")
+          (checkrun :move :npm "install"
+                    "-g"
+                    "--install-links"
+                    "--cache" (path/join builddir ".npm")
+                    "--prefix" destdir))
 
         :install/jpm
         (checkrun :move

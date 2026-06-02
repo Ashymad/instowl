@@ -18,6 +18,7 @@
     :meson ["meson"]
     :waf ["./waf" "waf"]
     :rinstall ["rinstall"]
+    :npm ["npm"]
     :stow ["stow" "xstow"]))
 
 (defn gettool [tool]
