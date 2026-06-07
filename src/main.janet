@@ -92,7 +92,8 @@
     (def triplet (string/slice (procout "gcc" "-dumpmachine") 0 -2))
     (def syslibdir (path/join libdir triplet))
     (def stowdir (path/join target "stow"))
-    (def pkg (libc/basename (os/getenv "PWD")))
+    (def srcdir (string/slice (procout "git" "rev-parse" "--show-toplevel") 0 -2))
+    (def pkg (libc/basename srcdir))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
 
