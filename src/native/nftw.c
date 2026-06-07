@@ -93,7 +93,8 @@ static Janet c_fstat(int32_t argc, Janet *argv) {
   if (fstat(janet_unwrap_integer(argv[0]), &st) == -1)
     return janet_wrap_nil();
 
-  const char *key = argc == 2 ? janet_unwrap_string(argv[1]) : NULL;
+  const uint8_t *key =
+      argc == 2 ? (const uint8_t *)janet_unwrap_string(argv[1]) : NULL;
 
   return stat2table(&st, key);
 }
@@ -113,7 +114,7 @@ static int O_(char name) {
   }
 }
 
-static int parseO(const char *opts) {
+static int parseO(const unsigned char *opts) {
   int flags = 0;
   bool read = false;
   bool write = false;
@@ -142,7 +143,8 @@ static Janet c_open(int argc, Janet *argv) {
   int flags = argc > 1 ? parseO(janet_unwrap_string(argv[1])) : 0;
   jmode_t mode = argc > 2 ? os_getmode(argv, 2) : 644;
 
-  return janet_wrap_integer(open(janet_unwrap_string(argv[0]), flags, mode));
+  return janet_wrap_integer(
+      open((const char *)janet_unwrap_string(argv[0]), flags, mode));
 }
 
 static Janet c_close(int argc, Janet *argv) {

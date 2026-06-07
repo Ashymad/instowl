@@ -29,5 +29,5 @@
     (os/symlink buildpath linkpath)))
 
 (let [file (file/open "compile_flags.txt" :w)]
-  (file/write file "-I" (os/getenv "HOME") "/.local/include\n")
+  (file/write file "-I" (os/getenv "HOME") "/.usr/local/include\n")
   (file/close file))
