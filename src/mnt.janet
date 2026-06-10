@@ -1,27 +1,56 @@
-(def- base_indent 4)
-
-(defn- inc_indent [x]
-  (+ x base_indent))
+(defn- from-pairs-check [ps]
+  (def ret @{})
+  (each [k v] ps
+    (if (has-key? ret k)
+      (error (string/format "Duplicate key: '%s'" k))
+      (put ret k v)))
+  ret)
 
 (def peg
   (peg/compile
-    ~{:main (* (only-tags (constant 0 :col)) :all :check_empty)
-      :key (* :check_indent (<- (to (+ " :" ":"))) :check_end)
-      :val (* " " :check_start (<- (to (+ " \n" "\n" -1 (* " " -1)))) :check_end)
-      :increase (only-tags (/ (backref :col) ,inc_indent :col))
-      :indent (lenprefix (backref :col) " ")
-      :list (some (* :indent "-" :val (+ -1 (some "\n"))))
-      :comment (some (* (any " ") "#" (to (+ "\n" -1)) (? "\n")))
-      :all (* (any :comment) (+ :lists :maps :nil))
-      :map (some (unref (group (* :indent :key ":" (+ (* -1 :nil) (* :val (+ (some "\n") -1)) (* (some "\n") :increase :all)))) :col))
-      :maps (/ (group (* :map (any (+ :comment :map)))) ,from-pairs)
-      :lists (group (* :list (any (+ :comment :list))))
-      :check_indent (+ (error (* " " (% (* :location (constant "Invalid indent"))))) true)
-      :check_start (+ (error (* (+ " " "\n" -1) (% (* :location (constant "Stray space at start"))))) true)
-      :check_end (+ (error (* " " (% (* :location (constant "Stray space at end"))))) true)
+    ~{:location (% (* (constant "at [") (line) (constant ":") (/ (column) ,dec) (constant "]: ")))
+
+      :check_indent (+ (error (* " " (% (* :location (constant "Invalid indent, try ") (backref :col))))) true)
       :check_empty (+ (error (* 1 (% (* :location (constant "Stray characters at the end"))))) true)
-      :location (% (* (constant "at [") (line) (constant ":") (column) (constant "]: ")))
-      :nil (constant :nil)
+      :key_invalid (+ "- " "> " ": " "[" "{" "#")
+      :check_key (+ (error (* (<- :key_invalid :invalid)
+                              (% (* :location
+                                    (constant "Keys cannot start with: '")
+                                    (backref :invalid)
+                                    (constant "'")))))
+                    true)
+
+      :check_nl (+ (error (* "\n" (% (* :location (constant "Keys can't contain newlines"))))) true)
+
+      :setcol (only-tags (* (/ (column) ,dec :col) (constant false :firstcol)))
+      :colprefix (lenprefix (backref :col) " ")
+      :firstprefix (* (backmatch :firstcol) :colprefix (any " "))
+      :resetfirst (only-tags (constant "" :firstcol))
+
+      :indent (+ (* :firstprefix :setcol) :colprefix)
+
+      :increase (only-tags (/ (backref :col) ,inc :col))
+
+      :string (* :indent ">" :val)
+      :strings (% (unref (* :resetfirst :string (any (+ :comment (* (constant "\n") :string))))))
+
+      :list (* :indent "-" :val)
+      :lists (group (unref (* :resetfirst :list (any (+ :comment :list)))))
+
+      :val (* " " (<- (to (+ "\n" -1 ))) (+ -1 (some "\n")))
+      :key (* :check_indent :check_key (<- (to (+ "\n" (* (any " ") ":")))) :check_nl (any " "))
+      :map (group (* :indent :key ":" (+ (* -1 :nil) :val (unref (* (some "\n") :increase :all)))))
+      :maps (/ (group (unref (* :resetfirst :map (any (+ :comment :map))))) ,from-pairs-check)
+
+      :comment (* (any " ") "#" (to (+ "\n" -1)) (? "\n"))
+
+      :nil (constant "")
+
+      :all (* (any :comment) (+ :strings :lists :maps :nil))
+
+      :init (only-tags (constant 0 :col))
+
+      :main (* :init (any :comment) :maps :check_empty)
       }))
 
 (defn parse [str] ((peg/match peg str) 0))

@@ -93,6 +93,7 @@
     (def syslibdir (path/join libdir triplet))
     (def stowdir (path/join target "stow"))
     (def srcdir (string/slice (procout "git" "rev-parse" "--show-toplevel") 0 -2))
+    (def srcsubdir (os/cwd))
     (def pkg (libc/basename srcdir))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
@@ -219,7 +220,9 @@
 
         :build/cargo
         (do
+          (os/cd srcdir)
           (checkrun :install/cargo :cargo "build" "--locked" "--release")
+          (os/cd srcsubdir)
           (if (file/file-exists? "install.yml") (set state :install/rinstall)))
 
         :build/pip
@@ -290,7 +293,9 @@
         :install/cargo
         (do
           (set prefix "")
-          (checkrun :move :cargo "install" "--force" "--frozen" "--no-track" "--root" destdir "--path" "."))
+          (os/cd srcdir)
+          (checkrun :move :cargo "install" "--offline" "--frozen" "--no-track" "--root" destdir "--path" srcsubdir)
+          (os/cd srcsubdir))
 
         :install/pip
         (utils/letsome wheels (libc/glob (path/join builddir "*.whl"))
