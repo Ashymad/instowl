@@ -28,10 +28,10 @@
 
 (def c/glob :private (bind "glob" :int :string :int :ptr :ptr))
 (def c/globfree :private (bind "globfree" :void :ptr))
-(def c/glob_t :private (ffi/struct :size :ptr :size))
+(def c/glob_t :private (ffi/struct :size :ptr :size :int :ptr :ptr :ptr :ptr :ptr))
 
 (defn glob [pattern]
-  (def globbed (ffi/write c/glob_t [0 nil 0]))
+  (def globbed (ffi/write c/glob_t [0 nil 0 0 nil nil nil nil nil]))
   (if (= 0 (c/glob pattern 0 nil globbed))
     (let [returned (ffi/read c/glob_t globbed)
           globlen (int/to-number (returned 0))
