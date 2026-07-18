@@ -94,8 +94,12 @@
     (def stowdir (path/join target "stow"))
     (def srcdir (string/slice (procout "git" "rev-parse" "--show-toplevel") 0 -2))
     (def srcsubdir (os/cwd))
-    (os/cd srcdir)
-    (def pkg (libc/basename srcdir))
+    (def pkg (if (= srcsubdir srcdir)
+               (libc/basename srcdir)
+               (do
+                 (os/cd srcdir)
+                 (string/join [(libc/basename srcdir)
+                               (libc/basename srcsubdir)] "::")))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
 
