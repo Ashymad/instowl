@@ -99,7 +99,7 @@
                (do
                  (os/cd srcdir)
                  (string/join [(libc/basename srcdir)
-                               (libc/basename srcsubdir)] "::")))
+                               (libc/basename srcsubdir)] "::"))))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
 
