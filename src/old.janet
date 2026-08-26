@@ -99,7 +99,7 @@
                (do
                  (os/cd srcdir)
                  (string/join [(libc/basename srcdir)
-                               (libc/basename srcsubdir)] "::")))
+                               (libc/basename srcsubdir)] "::"))))
     (def pkgdir (path/join stowdir pkg))
     (def destdir (libc/mkdtemp "/tmp/instow.XXXXXX"))
 
@@ -127,7 +127,8 @@
                                    (string "-L" syslibdir)
                                    "-Wno-unused-command-line-argument"] " ")
                      "RUSTFLAGS" (string/join
-                                   ["-C" (string "link-args=-Wl,-rpath," libdir)
+                                   [(get env  "RUSTFLAGS" "")
+                                    "-C" (string "link-args=-Wl,-rpath," libdir)
                                     "-C" (string "link-args=-Wl,-rpath," syslibdir)] " ")
                      "PERL5LIB" (path/join libdir "perl5")
                      "GOPATH" destdir})
