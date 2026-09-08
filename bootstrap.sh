@@ -18,13 +18,13 @@ ROOTDIR="$(mktemp -d)"
 pushd "$SRCDIR"
 
 echo "[1/9] Cloning janet repo"
-[ -d janet ] || git clone https://github.com/janet-lang/janet
+[ -d janet ] && git -C janet pull || git clone https://github.com/janet-lang/janet
 
 echo "[2/9] Building janet"
 PREFIX="" DESTDIR="$ROOTDIR" make -C janet -j$(nproc) install
 
 echo "[3/9] Cloning jpm repo"
-[ -d jpm ] || git clone https://github.com/janet-lang/jpm
+[ -d jpm ] && git -C jpm pull || git clone https://github.com/janet-lang/jpm
 
 pushd jpm
 
