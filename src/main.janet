@@ -153,6 +153,7 @@
           (file/file-exists? "Cargo.toml") (set state :build/cargo)
           (or (file/file-exists? "setup.py")
               (file/file-exists? "pyproject.toml")) (set state :build/pip)
+          (file/file-exists? "Build.PL") (set state :build/perl)
           (file/file-exists? "project.janet") (set state :build/jpm)
           (utils/some? (libc/glob "*.pro")) (set state :conf/qmake)
           (file/file-exists? "CMakeLists.txt") (set state :conf/cmake)
@@ -220,6 +221,9 @@
         :build/go
         (checkrun :install/go :go "build" "-v")
 
+        :build/perl
+        (checkrun :install/perl :perl "./Build.PL")
+
         :build/waf
         (checkrun :install/waf :waf "build" "-o" builddir)
 
@@ -265,6 +269,9 @@
         :install/waf
         (checkrun :move :waf "install" "-o" builddir "--destdir" destdir)
 
+        :install/perl
+        (checkrun :move :perl "./Build" "install" "--install_base" prefix "--destdir" destdir)
+
         :install/go
         (do
           (set prefix "")
@@ -290,6 +297,7 @@
                   (stropt "--libpath" libdir)
                   (stropt "--headerpath" (path/join headerdir "janet"))
                   "install")
+
         :install/rinstall
         (checkrun :move :rinstall "install" "-y" "--destdir" destdir "--packaging" "--prefix" prefix)
 

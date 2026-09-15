@@ -19,7 +19,8 @@
     :waf ["./waf" "waf"]
     :rinstall ["rinstall"]
     :npm ["npm"]
-    :stow ["stow" "xstow"]))
+    :stow ["stow" "xstow"]
+    :perl ["perl"]))
 
 (defn gettool [tool]
   (var ret nil)
